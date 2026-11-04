@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Poster Showdown Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@400;500;700&family=Playfair+Display&family=Roboto+Slab:wght@700&family=Pacifico&family=Bungee&display=swap">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+/* Layout: one file, two roles. The host screen is a projector stage; the player screen is a big-button answer pad. */
+:root{
+  --ink:#121019; --panel:#1c1826; --panel2:#251f33; --line:#352d48;
+  --text:#f5f2fb; --muted:#a69dba;
+  --lime:#e1ff2e; --violet:#a865ff; --orange:#ff7a1a; --cyan:#33e3d3;
+  --good:#3ddc84; --bad:#ff5468;
+  --display:'Anton','Impact','Arial Narrow Bold',sans-serif;
+  --body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--ink);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px))}
+h1,h2,h3{font-family:var(--display);font-weight:400;line-height:1;margin:0;text-transform:uppercase;text-wrap:balance}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--lime);outline-offset:2px}
+.label{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.brand{font-family:var(--display);font-size:18px;letter-spacing:.04em}
+.brand span{background:var(--lime);color:var(--ink);padding:0 6px;margin-left:6px}
+.status{font-size:13px;color:var(--muted)}
+.status.bad{color:var(--bad)}
+.btn{background:var(--lime);color:var(--ink);border:none;border-radius:10px;font-weight:700;font-size:18px;padding:14px 24px;box-shadow:0 4px 0 rgba(0,0,0,.4)}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.4)}
+.btn.ghost{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+.btn[disabled]{opacity:.4;cursor:default}
+.linkbtn{background:none;border:none;color:var(--muted);text-decoration:underline;font-size:14px;padding:4px}
+.center{max-width:560px;margin:6vh auto 0;display:flex;flex-direction:column;gap:16px;text-align:center}
+.center h1{font-size:clamp(52px,12vw,104px);line-height:.9}
+.center h1 .hl{background:var(--lime);color:var(--ink);padding:0 .08em;display:inline-block;margin-top:.06em}
+.center h2{font-size:clamp(40px,9vw,72px)}
+.center p{margin:0;color:var(--muted)}
+.big-input{background:var(--panel);border:3px solid var(--lime);border-radius:12px;color:var(--text);font:700 clamp(28px,7vw,44px) var(--body);padding:12px 16px;text-align:center;width:100%;letter-spacing:.08em}
+.big-input:focus{outline:none;box-shadow:0 0 0 4px rgba(225,255,46,.25)}
+.err{color:var(--bad);font-weight:700;min-height:24px}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center}
+select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:12px;font:500 16px var(--body)}
+.opts{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.opts label{display:flex;flex-direction:column;gap:6px;text-align:left}
+
+/* projector */
+.stage{display:flex;flex-direction:column;gap:18px}
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bar .spacer{flex:1}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:6px 14px;font-weight:700;font-size:15px}
+.code-card{background:var(--panel);border:3px solid var(--lime);border-radius:16px;padding:20px;text-align:center}
+.code-card .code{font-family:var(--display);font-size:clamp(80px,16vw,170px);line-height:1;letter-spacing:.06em;color:var(--lime)}
+.code-card .url{font-size:clamp(16px,2.4vw,24px);word-break:break-all}
+.lobby-count{font-family:var(--display);font-size:72px;line-height:1;text-align:center}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chips span{background:var(--panel2);border-radius:99px;padding:8px 16px;font-weight:700;font-size:20px;animation:pop .35s ease-out}
+.chips span.off{opacity:.4}
+.q{font-size:clamp(28px,4.6vw,58px);font-weight:700;line-height:1.15;text-align:center;text-wrap:balance;margin:0}
+.clock{font-family:var(--display);font-size:56px;line-height:1;width:100px;height:100px;border-radius:50%;border:6px solid var(--lime);display:grid;place-items:center;flex:none}
+.clock.low{border-color:var(--bad);color:var(--bad)}
+.answers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ans{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;text-align:left;border:none;border-radius:12px;padding:18px;min-height:96px;font-weight:700;font-size:clamp(18px,2.4vw,28px);color:#121019;box-shadow:0 5px 0 rgba(0,0,0,.35)}
+.ans .sh{font-size:30px;width:34px;text-align:center;flex:none}
+.ans .cnt{margin-left:auto;font-family:var(--display);font-size:34px}
+.ans .fill{position:absolute;left:0;bottom:0;height:10px;background:rgba(18,16,25,.55)}
+.a0{background:var(--lime)}.a1{background:var(--violet)}.a2{background:var(--orange)}.a3{background:var(--cyan)}
+.ans.dim{opacity:.25}
+.ans.right{outline:5px solid var(--good);outline-offset:3px}
+.why{background:var(--panel2);border-left:5px solid var(--good);border-radius:6px;padding:14px 16px;font-size:20px;margin:0}
+.vis{display:flex;justify-content:center;max-width:100%}
+.vis .sw{width:80px;height:80px;max-width:20vw}
+.vis .sw:first-child{border-radius:8px 0 0 8px}.vis .sw:last-child{border-radius:0 8px 8px 0}
+.vis .ftxt{font-size:clamp(40px,8vw,80px);line-height:1.2}
+.vis .pair{font-family:var(--display);font-size:clamp(34px,7vw,64px);padding:12px 28px;border-radius:8px}
+.board{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-width:820px;width:100%;align-self:center}
+.board li{display:grid;grid-template-columns:56px minmax(0,1fr) auto auto;gap:14px;align-items:center;background:var(--panel);border-radius:10px;padding:12px 18px;font-size:26px;font-weight:700}
+.board li .rk{font-family:var(--display);font-size:32px;color:var(--muted)}
+.board li:first-child{background:var(--lime);color:var(--ink)}
+.board li:first-child .rk{color:var(--ink)}
+.board li .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board li .dl{font-size:18px;color:var(--good)}
+.board li:first-child .dl{color:var(--ink)}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:12px}
+.podium div{flex:1;max-width:240px;border-radius:12px 12px 0 0;display:flex;flex-direction:column;align-items:center;padding:14px 8px;color:var(--ink);font-weight:700;min-width:0;text-align:center}
+.podium b{font-family:var(--display);font-size:52px;line-height:1}
+.podium span{font-size:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.podium .p1{background:var(--lime);height:280px}.podium .p2{background:var(--cyan);height:210px}.podium .p3{background:var(--orange);height:160px}
+
+/* player pad */
+.pad{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:14px;text-align:center}
+.pad .who{display:flex;justify-content:space-between;font-weight:700}
+.pad .answers{grid-template-columns:repeat(2,minmax(0,1fr))}
+.pad .ans{min-height:clamp(120px,24vh,200px);flex-direction:column;justify-content:center;text-align:center;gap:6px;font-size:16px}
+.pad .ans .sh{font-size:44px;width:auto}
+.pad .pq{font-size:18px;font-weight:700;margin:0}
+.verdict{font-family:var(--display);font-size:clamp(60px,16vw,110px);line-height:1;text-transform:uppercase}
+.verdict.ok{color:var(--good)}.verdict.no{color:var(--bad)}
+.pts{font-family:var(--display);font-size:48px;color:var(--lime)}
+.rank{font-size:24px;font-weight:700}
+.muted{color:var(--muted);margin:0}
+@keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+.pop{animation:pop .35s ease-out}
+@media (max-width:600px){.answers{grid-template-columns:1fr}.pad .answers{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%;height:100%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">TGJ3M<span>POSTER SHOWDOWN LIVE</span></div>
+    <span class="status" id="status"></span>
+  </div>
+  <main id="app"></main>
+</div>
+<canvas id="fx" hidden></canvas>
+<script>
+(() => {
+const RAW = [
+["col","In Photoshop's Color Picker, what does the “B” stand for?","Brightness (value)",["Blue","Blend","Black"],"Photoshop calls value Brightness: how light or dark a colour is."],
+["col","Saturation describes…","How intense or dull a colour is",["How light or dark a colour is","Which colour family it belongs to","How see-through a layer is"],"Saturation = how much colour. Bright blue → greyish blue."],
+["col","Value describes…","How light or dark a colour is",["How intense or dull a colour is","The colour family","How much the paint costs"],"Value = how much light. Baby blue → navy."],
+["col","Hue means…","The colour family, like red, blue or green",["How bright a colour is","How much grey is added","The texture on top of a colour"],"Hue is the colour family."],
+["col","In the 60-30-10 rule, where should the 10% accent colour go?","On the call to action or headline",["Across the whole background","Only in the fine print","Nowhere: it's optional"],"The accent is the pop that draws the eye, so put it where you want people to look."],
+["col","In the 60-30-10 rule, the 60% colour is the…","Dominant colour for backgrounds and big areas",["Accent colour","Text colour only","Texture colour"],"60% dominant, 30% support, 10% accent."],
+["col","Warm colours (red, orange, yellow) usually suggest…","Energy, action and excitement",["Calm, trust and stability","Sadness and loss","Nothing: colour has no mood"],"Warm = energy. Cool = calm, trust, stability."],
+["col","Which group are all cool colours?","Blue, green, purple",["Red, orange, yellow","Orange, green, red","Yellow, purple, red"],"Cool colours sit on the blue side of the wheel."],
+["col","Which palette fits The Outsiders' gritty 1960s feel best?","A low-saturation, muted palette",["A neon, high-saturation palette","Pure rainbow colours","Only bright primaries"],"Low saturation feels calm, vintage or serious."],
+["col","High saturation on a poster tends to feel…","Loud: sports, energy, fun",["Calm and vintage","Serious and formal","Faded and old"],"Saturation sets the era: high shouts, low feels calm or vintage."],
+["col","Name this colour harmony.","Complementary",["Analogous","Monochromatic","Triadic"],"Opposites on the wheel, like blue + orange, give the most punch.",{sw:["#1E88E5","#FF8C00"]}],
+["col","Name this colour harmony.","Analogous",["Complementary","Triadic","Split-complementary"],"Neighbours on the wheel feel harmonious and natural.",{sw:["#1E88E5","#00897B","#43A047"]}],
+["col","Name this colour harmony.","Monochromatic",["Analogous","Complementary","Triadic"],"One hue in different values: calm and classy.",{sw:["#0D1B3D","#1F4E9B","#3D8BFF","#A9C8FF"]}],
+["col","Name this colour harmony.","Triadic",["Complementary","Analogous","Monochromatic"],"Three evenly spaced colours: bright and playful.",{sw:["#FDD835","#E53935","#1E88E5"]}],
+["col","Which harmony is “bold but easier to balance”?","Split-complementary",["Monochromatic","Analogous","Triadic"],"One colour plus the two neighbours of its opposite."],
+["col","What contrast ratio does small text need?","4.5:1",["1.5:1","2:1","10:1"],"4.5:1 for small text, 3:1 for big headlines."],
+["col","What contrast ratio do big headlines need?","3:1",["1:1","4.5:1","21:1"],"Large type can get away with 3:1. Small text needs 4.5:1."],
+["col","Would this headline pass the greyscale test?","No: it disappears in black and white",["Yes: red and green are opposites","Yes: any two colours pass","Only if it's printed bigger"],"Red on green looks different in colour but nearly the same in greyscale (about 1.6:1). Fail.",{pair:["#43A047","#E53935"]}],
+["col","Would this headline pass the greyscale test?","Yes: it stays clear in black and white",["No: navy is too dark","No: white text always fails","Only on screens"],"White on navy is about 14:1. Easy pass.",{pair:["#1F2A44","#FFFFFF"]}],
+["col","Your text gets lost over a busy part of your photo. Which is NOT a recommended fix?","Add a second texture on top",["Put a darker or lighter box behind it","Move the text to a calmer area","Darken that part of the photo"],"More texture makes it worse. Box it, move it, or darken behind it."],
+["col","How many colours should you keep when building a palette from your photo?","3–5, plus black or white",["Just 1","10–12","Every colour Adobe Color finds"],"Extract → Reduce → Check → Record."],
+["col","On color.adobe.com, which feature pulls a palette from your photo?","Extract Theme",["Colour Roulette","Magic Wand","Content-Aware Fill"],"Upload your photo and try the Colorful, Muted and Deep moods."],
+["col","Blend mode Multiply…","Keeps the darks and drops the whites",["Keeps the lights and drops the darks","Inverts every colour","Deletes the layer underneath"],"Great for grungy, dirty textures."],
+["col","Which blend mode keeps the lights and drops the darks, good for dust and light leaks?","Screen",["Multiply","Normal","Dissolve"],"Screen is the opposite of Multiply."],
+["col","Overlay and Soft Light give you…","A subtle, all-over texture",["A solid colour block","Only the darkest pixels","A 3D bevel"],"They blend into both the lights and the darks."],
+["col","What opacity should you start with for a texture layer?","Around 20–40%",["100%","80–90%","1%"],"Subtle wins. Lower it until you notice the texture only when you look for it."],
+["col","How many textures should your poster use?","One",["Three","Five","As many as fit"],"One texture, not five. Pick the one that fits your mood."],
+["col","On a layer mask, painting BLACK…","Hides the texture",["Shows the texture","Turns the texture black","Locks the layer"],"Black hides, white shows. Paint black over faces to keep them clean."],
+["col","In Photoshop, how do you make a clipping mask?","Alt-click (Option on Mac) the line between the two layers",["Double-click the eye icon","Press Ctrl+Z","Drag the layer to the trash"],"Put the texture right above the text or shape first."],
+["col","What's the Illustrator shortcut for Clipping Mask → Make?","Ctrl/Cmd + 7",["Ctrl/Cmd + T","Ctrl/Cmd + S","Ctrl/Cmd + 0"],"Texture above the text, select both, Ctrl/Cmd + 7."],
+["col","Why desaturate a texture before using it?","So it won't change your palette",["To make it load faster","Colour textures aren't allowed","So it prints larger"],"Adjustments › Desaturate turns it black and white."],
+["col","Which texture best fits a vintage, gritty Outsiders poster?","Paper, grain, scratches or worn print",["Halftone comic dots","Soft watercolour","Glossy chrome"],"Halftone = retro comic. Concrete = urban. Canvas = soft and handmade."],
+["col","Halftone dots make a poster feel…","Retro comic or newspaper",["Soft and handmade","Tough and industrial","Futuristic"],"halftone.png is in the class Textures folder."],
+["col","In Photoshop, how do you bring a texture file into your poster?","File → Place Embedded",["Edit → Undo","Image → Crop","Select → All"],"Then stretch it, put it above, change the blend mode and lower the opacity."],
+
+["type","“Helvetica” is a typeface. “Helvetica Bold Italic” is a…","Font",["Typeface","Glyph family","Kerning pair"],"A typeface is the family. A font is one style in that family."],
+["type","Typography is the art of arranging type to make language…","Legible, readable and appealing",["Longer and more detailed","Colourful and shiny","Hidden and mysterious"],"It includes choosing fonts, adjusting them and laying out text."],
+["type","Letters with small “feet” are called…","Serif",["Sans serif","Script","Monospace"],"Serif feels traditional, trustworthy, literary."],
+["type","What mood does a sans-serif typeface usually give?","Clean, modern, friendly",["Traditional and literary","Handwritten and personal","Spooky"],"No feet = clean and modern."],
+["type","Which classification is this?","Slab serif",["Script","Sans serif","Display"],"Thick, blocky feet: sturdy, bold, vintage.",{font:"'Roboto Slab',Rockwell,serif",w:700}],
+["type","Which classification is this?","Serif",["Sans serif","Slab serif","Script"],"Small, fine feet: traditional and trustworthy.",{font:"'Playfair Display',Georgia,serif",w:400}],
+["type","Which classification is this?","Script",["Serif","Slab serif","Sans serif"],"Looks handwritten. Elegant or personal, so use it sparingly.",{font:"'Pacifico','Brush Script MT',cursive",w:400}],
+["type","Which classification is this?","Display",["Serif","Script","Slab serif"],"Decorative and made for headlines.",{font:"'Bungee',Impact,sans-serif",w:400}],
+["type","Leading is the space…","Between lines of text",["Between two letters","Across a whole word","Around the page edge"],"Aim for 120–150% of the font size."],
+["type","Kerning is the space…","Between two specific letters, like “AV”",["Between lines","Across a whole line","Between paragraphs"],"Fix specific pairs like AV or To."],
+["type","Tracking that is too loose makes text look…","“Torn” apart",["Cramped","Bolder","Italic"],"Tracking is spacing across a word or line. Too tight looks cramped."],
+["type","Comfortable leading is about what percent of the font size?","120–150%",["50–75%","200–300%","Exactly 100%"],"Not cramped, not torn apart."],
+["type","What's the most typefaces you should use on one poster?","2–3",["Only 1","5–6","As many as you like"],"Less is more. Give each font a job."],
+["type","Put a poster's hierarchy in order.","Headline → Subheading → Details → Call to action",["Details → Headline → Call to action → Subheading","Call to action → Details → Subheading → Headline","Subheading → Headline → Details → Call to action"],"Make the size jump between levels obvious, not subtle."],
+["type","Italic letters are…","Redrawn in a slanted, handwriting-like style",["The regular letters simply slanted","Extra thick","Spaced further apart"],"Oblique is the regular letters simply slanted."],
+["type","Weight describes…","How thick the strokes are",["How tall the letters are","How far apart the lines are","How heavy the printed poster is"],"Thin, Light, Regular, Bold, Black."],
+["type","Point size (pt) tells you…","How tall the type is",["How thick it is","Which typeface it is","The colour of the type"],"Bigger pt = taller type."],
+["type","Which alignment is easiest to read for details and longer text?","Left",["Centred","Right","Justified"],"Centred is formal and works for short headlines."],
+["type","Legibility asks…","Can you tell the individual letters apart?",["Can you take in the whole message easily?","Is the poster on time?","Is everything spelled right?"],"Legibility is step 1. Readability (the whole message) is step 2."],
+["type","The poster test: can you read it from how far away?","3 metres",["30 centimetres","30 metres","Only up close"],"If it fails at 3 m, go bigger or add contrast."],
+["type","How long should a poster headline be?","2–6 words",["A full paragraph","15–20 words","One letter"],"Short and bold wins the 3-second test."],
+["type","A good call to action starts with…","A verb, like “Join” or “Grab tickets”",["The date","The school name","A question mark"],"Join. Grab tickets. Come try it."],
+["type","Symmetry, balance and strict proportions describe…","Classical typography",["Modern typography","Punk lettering","Psychedelic lettering"],"Modern uses freer forms and asymmetrical layouts."],
+["type","Which type best fits a Robotics club poster?","Geometric, techy sans serif",["Classic serif","Flowing script","Spooky hand-drawn"],"Chess/debate: classic serif. Athletics: bold condensed. Drama: expressive display."],
+["type","Which type best fits an Athletics poster?","Bold, condensed, high-impact",["Delicate script","Classic book serif","Thin and light"],"Your headline should feel like your club before anyone reads it."],
+["type","Which type best fits a Chess or Debate club?","Classic serif",["Bubbly cartoon display","Neon script","Ransom-note letters"],"Serif feels traditional and trustworthy."],
+["type","What makes a STRONG font pairing?","They share something but contrast clearly",["They look almost exactly the same","They're both decorative scripts","They're picked at random"],"Avoid two fonts that look almost the same."],
+["type","“FUNERAL SERVICE” in a goofy, playful font feels wrong because…","The typeface doesn't match the message",["The words are misspelled","It's too big","It's the wrong colour"],"Look at the font before you read the words."],
+["type","Repeating fonts, colours and shapes makes a design feel…","Unified",["Boring no matter what","Random","Unreadable"],"Repeat to unify; vary size or shade so it doesn't get boring."],
+["type","The Outsiders is set in…","1960s Tulsa, Oklahoma",["1920s Chicago","1990s Toronto","1800s London"],"Look at 1960s movie posters, paperback covers and drive-in signs."],
+
+["hist","A poster has one job in three parts. Which is NOT one of them?","Show every detail about the event",["Grab attention","Deliver one clear message","Tell people what to do next"],"Don't try to show everything."],
+["hist","The 3-second test asks…","Can a viewer tell what the poster is for in 3 seconds?",["Can you design it in 3 seconds?","Does it use 3 colours?","Can it be printed 3 times?"],"Posters are seen in passing."],
+["hist","Which printing technology made big, bright posters cheap in the 1880s?","Colour lithography",["Laser printing","Photoshop","3D printing"],"Bold outlines, flat colour and big lettering, made to be seen from the street."],
+["hist","Flowing, curving lines inspired by nature describe…","Art Nouveau",["Swiss Style","Punk","Bauhaus"],"1890s–1910: decorative borders and hand-drawn lettering too."],
+["hist","Plakatstil (“poster style”) is known for…","One product, one brand name, flat colour, nothing else",["Swirling, barely readable lettering","Cut-and-paste ransom notes","Photos of movie stars"],"German, 1900s. Keep it simple: the start of modern minimal advertising."],
+["hist","Bold diagonals, red and black, and photomontage describe…","Constructivism",["Art Nouveau","Art Deco","Psychedelic"],"Russia, 1920s. Plain shapes and tilted angles create energy and motion."],
+["hist","Clean geometric shapes and sans-serif type came from which German school?","Bauhaus",["Plakatstil","Art Nouveau","Pop Art"],"1920s–1930s."],
+["hist","Sleek, streamlined 1920s–30s travel posters in smooth curves and capitals are…","Art Deco",["Punk","Swiss Style","Psychedelic"],"Smooth curves say modern speed."],
+["hist","Grids, sans-serif type, asymmetry and lots of white space describe…","Swiss Style",["Art Nouveau","Punk","Psychedelic"],"Also called the International Typographic Style (1950s–60s)."],
+["hist","Swirling, barely readable lettering and clashing colours describe 1960s…","Psychedelic posters",["Swiss Style","Bauhaus","War posters"],"Mostly concert posters. Pop Art borrowed from comics and advertising in the same decade."],
+["hist","Cut-and-paste, ransom-note lettering describes which 1970s style?","Punk",["Art Deco","Swiss Style","Art Nouveau"],"Punk posters looked rough and photocopied on purpose."],
+["hist","Realistic images feel authoritative. Symbolic images…","Create feelings",["Are always confusing","Can't be used on posters","Only work in black and white"],"From Visuals and Type."],
+["hist","On a poster, deep red usually means…","Urgency, passion",["Calm, trust","Nostalgia, restraint","Nothing at all"],"Blue = calm, trust. Muted tones = nostalgia, restraint."],
+["hist","True or false: very bright neon colours always print perfectly.","False",["True"],"Neon colours may not print well."],
+["hist","Which is NOT one of the things that hasn't changed in 150 years of posters?","Use as many fonts as possible",["One strong focal point","A short, bold headline","A call to action"],"Also: clear grouped details, and readable from across the room."],
+["hist","Mixing historical styles and playing with type describes which 1970s–80s movement?","Postmodern",["Art Nouveau","Bauhaus","Plakatstil"],"Postmodern designers borrowed from the past and broke the rules on purpose."],
+["hist","Swiss Style is also known as…","The International Typographic Style",["Art Nouveau","Plakatstil","Pop Art"],"Grids, sans-serif type, asymmetry and white space."],
+["hist","Combining cut-up photographs into one image is called…","Photomontage",["Lithography","Kerning","Halftone"],"A signature move of Constructivism."],
+["hist","Put these poster eras in order, oldest first.","Art Nouveau → Swiss Style → Punk",["Punk → Art Nouveau → Swiss Style","Swiss Style → Punk → Art Nouveau","Art Nouveau → Punk → Swiss Style"],"1890s → 1950s–60s → 1970s–80s."],
+["hist","A rough, photocopied, hand-made look is often called…","DIY",["Art Deco","Swiss Style","Minimal"],"Punk flyers were cut, pasted and photocopied cheaply."],
+["hist","Building the whole poster around one distinctive idea is called the…","Central idea",["Footer","Bleed","Kerning"],"Don't try to show everything. Movie posters focus on one theme."],
+["hist","“Showing without telling” on a poster means…","Using an image to hint at the story instead of explaining it",["Leaving out the headline","Writing every detail in words","Using only black and white"],"A strong image can promise the feeling without spelling it out."],
+["hist","Posters are seen from a distance, so what matters more than tiny detail?","Style and emotion",["Fine print","Lots of small photos","Long paragraphs"],"From Visuals and Type."],
+["hist","How many main colours should a poster palette usually limit itself to?","2–3, plus neutrals",["7–8","Just black","As many as possible"],"Colours carry meaning, so choose a few on purpose."],
+["hist","On a poster, blue usually means…","Calm, trust",["Urgency, passion","Danger","Nostalgia"],"Deep red = urgency, passion. Muted tones = nostalgia, restraint."],
+["hist","Great posters help viewers…","Imagine themselves in the experience",["Read for a long time","Ignore the details","Guess the date"],"Ask: what should someone feel when they see your poster?"],
+
+["ai","Which is NOT one of the six parts of a strong prompt?","Price",["Subject","Mood","Composition"],"Subject, style, mood, colour, composition, text."],
+["ai","How should you write the exact words you want on an AI poster?","In quotation marks",["In all lowercase","Leave them out","In a separate email"],"Example: headline text ‘YOUR MOVE’ at the top."],
+["ai","Vague prompt = …","Generic result",["Perfect result","No result","Better result"],"AI fills every gap you leave with the most average guess."],
+["ai","Why does your research matter for prompting?","It makes your prompt specific",["It makes the AI slower","AI doesn't need it","Flint grades it"],"AI doesn't read your mind."],
+["ai","When revising an AI poster, change…","One or two things at a time",["Everything at once","Nothing: restart each time","Only the file name"],"Revise, don't restart: Look, Tweak, Specify, Save."],
+["ai","Which feedback is most useful for revising a prompt?","“Make the title larger and centred”",["“Make it better”","“Fix it”","“Do something cool”"],"Be specific."],
+["ai","Which is NOT a common AI image flaw?","Always getting the dates right",["Misspelled or invented text","Strange hands and faces","Stereotypes and inaccurate history"],"Check every image for these before you use it."],
+["ai","In a prompt, “composition” means…","What is biggest, where things sit, and orientation",["The music playing","The price of the poster","Who wrote the prompt"],"One of the six parts."],
+["ai","Which AI tool did we use to generate our posters?","Flint",["Photoshop","Adobe Color","Excel"],"Saved as AI_v1, AI_v2 and AI_v3."],
+["ai","“The instructions you give an AI tool” is called…","Prompt engineering",["Iteration","Kerning","Plakatstil"],"Use this term in your reflection."],
+["ai","“A new version made by revising the last one” is called…","Iteration",["Prompt engineering","Hierarchy","Tracking"],"AI_v1 → AI_v2 → AI_v3."],
+["ai","Prompt A was just “a poster for a chess club.” What did it make?","A generic, cluttered flyer with placeholder text",["A bold, minimalist knight poster","A perfect poster first try","Nothing at all"],"Prompt B's six-part detail made the bold YOUR MOVE knight poster."],
+["ai","Can your original poster (Part 2) use AI-generated images?","No: it must use your own photo",["Yes, any AI image","Only images from Flint","Only for the background"],"Your own photo, no AI images."],
+["ai","“Style” in a prompt could be…","Photographic, illustrated, retro or minimal",["The date and time","The school's address","Your teacher's name"],"Style is how it looks."],
+["ai","What goes in your AI Prompt Log?","Every prompt and every change, with why you changed it",["Only your final poster","Nothing","Only your first prompt"],"You submit all versions, the prompt for each, and why."],
+["ai","An AI poster shows the date “February 30.” That's an example of…","Wrong dates, times and details",["Good hierarchy","Strong contrast","A call to action"],"Always proofread AI output."],
+
+["talk","The first thing your eye goes to on a poster is the…","Focal point",["Call to action","Grid","Leading"],"One strong focal point."],
+["talk","“What you want the viewer to do” is the…","Call to action (CTA)",["Concept","Audience","Thumbnail"],"Start it with a verb."],
+["talk","“The one big idea behind your design” is the…","Concept",["Purpose","Grid","Kerning"],"Build the poster around one distinctive idea."],
+["talk","“Who the poster is for” is the…","Audience",["Purpose","Focal point","Palette"],"Purpose is what the poster needs to do."],
+["talk","The 5 W's are…","Who, what, when, where, why",["Width, weight, white, wide, wrap","Where, when, which, what, wow","Who, why, wait, watch, win"],"Clear details, grouped together."],
+["talk","The order in which a viewer sees information is called…","Visual hierarchy",["Alignment","Tracking","Iteration"],"Create it with size, weight, style and colour."],
+["talk","Reading order often follows which patterns?","Z- or F-pattern",["X- or Y-pattern","O- or Q-pattern","Spiral only"],"1st, 2nd, 3rd."],
+["talk","A small, quick sketch of a layout idea is a…","Thumbnail",["Swatch","Prompt","Mask"],"You sketched 3 of these."],
+["talk","Strong differences like big/small or light/dark are called…","Contrast",["Alignment","Repetition","Leading"],"Contrast makes things stand out."],
+["talk","Empty space that gives elements room to breathe is…","White space (negative space)",["Wasted space","Bleed","Kerning"],"It doesn't have to be white."],
+["talk","Invisible lines that organize a layout make a…","Grid",["Mask","Swatch","Filter"],"Use a grid with a clear focal point."],
+["talk","Lining elements up so the design feels organized is…","Alignment",["Saturation","Iteration","Tracking"],"Pick a system and stick to it."],
+["talk","At the gallery walk, each poster gets…","Two glows and one grow",["Three grows","A letter grade","One glow only"],"Glow = something that works. Grow = one specific suggestion."],
+["talk","What size is the final poster?","11×14 portrait, 300 ppi",["8.5×11 landscape, 72 ppi","Phone wallpaper size","24×36, 10 ppi"],"From the Part 2 requirements."],
+["talk","How long is the final reflection?","200–500 words",["50 words","1,000–2,000 words","One sentence"],"Compare your AI poster with your real one, using design vocabulary."],
+["talk","How should your final files be named?","LastName_FirstName_Poster_[item]",["poster_final_FINAL2","Untitled-1","Anything you like"],"From the submission checklist."],
+["talk","Your working file should be saved as…","An .ai or .psd with named layers",["A screenshot","A .txt file","Only a PNG"],"Plus a PNG export of the final poster."],
+["talk","Your poster must include a headline, what, when, where and…","A call to action",["A QR code","Five fonts","An AI image"],"Plus 2–3 typefaces and a 3–5 colour palette."],
+];
+const Q = RAW.map(([d,q,c,w,why,v]) => ({d,q,c,w,why,v}));
+const DECKS = [["mix","Mixed Mayhem (all decks)"],["col","Colour & Texture"],["type","Type Talks"],["hist","Stop. Look. Act."],["ai","Talking to the Machine"],["talk","Talk Like a Designer"]];
+const SHAPES = ["▲","◆","●","■"];
+const PREFIX = "tgj3m-poster-showdown-";
+
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+const app = $("app");
+const el = (tag, cls, txt) => { const e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e; };
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const fmt = n => Math.round(n).toLocaleString("en-CA");
+const clean = s => String(s||"").replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩]/g,"").replace(/\s+/g," ").trim().slice(0,20);
+const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch{ return d; } }, set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} } };
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function btn(label, cls, fn){ const b=el("button",cls||"btn",label); b.type="button"; if(fn) b.addEventListener("click",fn); return b; }
+function status(msg, bad){ const s=$("status"); s.textContent=msg||""; s.classList.toggle("bad",!!bad); }
+function ordinal(n){ const s=["th","st","nd","rd"], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+function visFor(q){
+  if(!q.v) return null;
+  const vis=el("div","vis");
+  if(q.v.sw) for(const c of q.v.sw){ const s=el("span","sw"); s.style.background=c; vis.append(s); }
+  if(q.v.font){ const t=el("span","ftxt","Typography"); t.style.fontFamily=q.v.font; t.style.fontWeight=q.v.w; vis.append(t); }
+  if(q.v.pair){ const t=el("span","pair","HEADLINE"); t.style.background=q.v.pair[0]; t.style.color=q.v.pair[1]; vis.append(t); }
+  return vis;
+}
+let muted=false, actx=null;
+function tone(freqs, dur=0.09, type="square", gain=0.05){
+  if(muted) return;
+  try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); let t=actx.currentTime;
+    for(const f of freqs){ const o=actx.createOscillator(), g=actx.createGain(); o.type=type; o.frequency.value=f; g.gain.value=gain; g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g).connect(actx.destination); o.start(t); o.stop(t+dur); t+=dur*0.9; } }catch{}
+}
+const sfx={ join:()=>tone([880,1320],0.06,"triangle"), tick:()=>tone([1200],0.03,"sine",0.03), right:()=>tone([660,880,1320],0.08), wrong:()=>tone([220,150],0.16,"sawtooth",0.04), end:()=>tone([523,659,784,659,1047],0.11,"triangle",0.06), buzz:()=>tone([180],0.4,"sawtooth",0.05) };
+function confetti(){
+  if(reduced) return;
+  const c=$("fx"); c.hidden=false; const ctx=c.getContext("2d"); const W=c.width=innerWidth, H=c.height=innerHeight;
+  const cols=["#e1ff2e","#a865ff","#ff7a1a","#33e3d3","#f5f2fb"];
+  const ps=Array.from({length:160},()=>({x:W/2+(Math.random()-.5)*W*.4,y:H*.35,vx:(Math.random()-.5)*15,vy:-Math.random()*15-4,r:Math.random()*7+4,c:cols[Math.floor(Math.random()*5)],a:Math.random()*6}));
+  let t=0; (function f(){ ctx.clearRect(0,0,W,H); t++; for(const p of ps){ p.vy+=.35; p.x+=p.vx; p.y+=p.vy; p.a+=.2; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.fillStyle=p.c; ctx.fillRect(-p.r/2,-p.r/4,p.r,p.r/2); ctx.restore(); } if(t<170) requestAnimationFrame(f); else { ctx.clearRect(0,0,W,H); c.hidden=true; } })();
+}
+function peerReady(){ if(typeof Peer==="undefined"){ status("Couldn't load the connection library. Check the internet connection and reload.",true); return false; } return true; }
+const PEER_OPTS = { debug:0, config:{ iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:global.stun.twilio.com:3478"}] } };
+
+// =====================================================================
+// HOST (teacher, on the projector)
+// =====================================================================
+const H = { peer:null, code:"", players:new Map(), qs:[], i:-1, secs:20, phase:"setup", t0:0, raf:0, deck:"mix" };
+// player: {key, name, conn, online, score, streak, last:{c, pts, ok}, delta}
+
+function hostSetup(){
+  H.phase="setup"; app.textContent="";
+  const box=el("div","center");
+  box.append(el("div","label","Teacher · put this on the projector"), el("h2",null,"Host a live game"));
+  const opts=el("div","opts");
+  const mk=(id,label,list,val)=>{ const l=el("label"); l.append(el("span","label",label)); const s=el("select"); s.id=id; for(const [v,t] of list){ const o=el("option",null,t); o.value=v; s.append(o);} s.value=String(val); l.append(s); return l; };
+  opts.append(mk("hDeck","Deck",DECKS,"mix"), mk("hN","Questions",[[10,"10"],[15,"15"],[20,"20"]],10), mk("hT","Seconds per question",[[10,"10"],[20,"20"],[30,"30"]],20));
+  box.append(opts, el("p",null,"Students join on their own devices with a game code and a team name. Faster correct answers earn more points."));
+  const row=el("div","row"); row.append(btn("Create game","btn",createGame), btn("Back","btn ghost",landing)); box.append(row);
+  app.append(box);
+}
+function createGame(){
+  if(!peerReady()) return;
+  H.deck=$("hDeck").value; H.secs=+$("hT").value;
+  const pool=Q.filter(q=>H.deck==="mix"||q.d===H.deck);
+  H.qs=shuffle(pool).slice(0,+$("hN").value).map(q=>({...q, opts: q.w.length===1?["True","False"]:shuffle([q.c,...q.w])}));
+  H.code=String(Math.floor(100000+Math.random()*900000));
+  status("Creating game…");
+  if(H.peer) try{ H.peer.destroy(); }catch{}
+  H.peer=new Peer(PREFIX+H.code, PEER_OPTS);
+  H.peer.on("open",()=>{ status("Game open"); H.phase="lobby"; renderHost(); });
+  H.peer.on("connection",conn=>hostConn(conn));
+  H.peer.on("disconnected",()=>{ status("Reconnecting to the game server…",true); try{ H.peer.reconnect(); }catch{} });
+  H.peer.on("error",e=>{
+    if(e.type==="unavailable-id"){ createGame(); return; }
+    if(e.type==="peer-unavailable") return;
+    status("Connection problem: "+(e.type||"unknown")+". Check the internet connection.",true);
+  });
+  window.addEventListener("beforeunload",e=>{ if(H.phase!=="setup"&&H.phase!=="end"){ e.preventDefault(); e.returnValue=""; } });
+}
+function send(p,msg){ if(p.conn && p.online){ try{ p.conn.send(msg); }catch{} } }
+function hostConn(conn){
+  conn.on("data",d=>{
+    if(!d||typeof d!=="object") return;
+    if(d.t==="join") return hostJoin(conn,d);
+    const p=[...H.players.values()].find(x=>x.conn===conn); if(!p) return;
+    if(d.t==="ans") hostAnswer(p,d);
+  });
+  conn.on("close",()=>{ for(const p of H.players.values()) if(p.conn===conn){ p.online=false; } if(H.phase==="lobby") renderHost(); });
+}
+function hostJoin(conn,d){
+  const name=clean(d.name), key=String(d.key||"").slice(0,40);
+  if(name.length<2){ try{ conn.send({t:"bad-name",msg:"Team name needs at least 2 letters."}); }catch{} return; }
+  let p=H.players.get(key);
+  const taken=[...H.players.values()].find(x=>x.name.toLowerCase()===name.toLowerCase() && x.key!==key);
+  if(taken){ try{ conn.send({t:"bad-name",msg:"That team name is taken. Try another."}); }catch{} return; }
+  if(!p){
+    if(H.phase==="end"){ try{ conn.send({t:"bad-name",msg:"This game has ended."}); }catch{} return; }
+    p={key,name,conn,online:true,score:0,streak:0,last:null,delta:0,answers:{}}; H.players.set(key,p); sfx.join();
+  } else { p.conn=conn; p.online=true; p.name=name; }
+  send(p,{t:"welcome",name:p.name,score:p.score});
+  if(H.phase==="question"){ const q=H.qs[H.i]; if(!p.answers[H.i]) send(p,qMsg(q)); else send(p,{t:"locked"}); }
+  else if(H.phase==="end") send(p,endMsg(p));
+  if(H.phase==="lobby") renderHost(); else updateAnswered();
+}
+function qMsg(q){ return {t:"q", i:H.i, n:H.qs.length, q:q.q, opts:q.opts, secs:H.secs, v:q.v||null, left:Math.max(0,H.secs-(performance.now()-H.t0)/1000)}; }
+function hostStart(){ H.i=-1; nextQuestion(); }
+function nextQuestion(){
+  H.i++;
+  if(H.i>=H.qs.length) return hostEnd();
+  for(const p of H.players.values()){ p.last=null; p.delta=0; }
+  H.phase="question"; H.t0=performance.now();
+  const q=H.qs[H.i];
+  for(const p of H.players.values()) send(p,qMsg(q));
+  renderHost();
+}
+function hostAnswer(p,d){
+  if(H.phase!=="question" || d.i!==H.i || p.answers[H.i]) return;
+  const c=Number(d.c), q=H.qs[H.i];
+  if(!Number.isInteger(c)||c<0||c>=q.opts.length) return;
+  const elapsed=Math.min(H.secs,(performance.now()-H.t0)/1000);
+  const ok=q.opts[c]===q.c;
+  let pts=0;
+  if(ok){ p.streak++; pts=Math.round(1000*(1-(elapsed/H.secs)/2)); if(p.streak>=2) pts+=Math.min(p.streak-1,5)*100; }
+  else p.streak=0;
+  p.score+=pts; p.delta=pts; p.last={c,pts,ok}; p.answers[H.i]=p.last;
+  send(p,{t:"locked"});
+  updateAnswered();
+}
+function activePlayers(){ return [...H.players.values()].filter(p=>p.online||Object.keys(p.answers).length); }
+function updateAnswered(){
+  const a=$("hAns"); if(!a||H.phase!=="question") return;
+  const ps=[...H.players.values()].filter(p=>p.online), n=ps.filter(p=>p.answers[H.i]).length;
+  a.textContent=`${n}/${ps.length} answered`;
+  if(ps.length && n>=ps.length) hostReveal();
+}
+function ranked(){ return [...H.players.values()].sort((a,b)=>b.score-a.score); }
+function hostReveal(){
+  if(H.phase!=="question") return;
+  cancelAnimationFrame(H.raf); H.phase="reveal";
+  const q=H.qs[H.i], list=ranked();
+  for(const p of H.players.values()){
+    if(!p.answers[H.i]){ p.streak=0; p.delta=0; }
+    const rank=list.indexOf(p)+1, ahead=rank>1?list[rank-2]:null;
+    send(p,{t:"result", ok:!!(p.last&&p.last.ok), answered:!!p.last, pts:p.delta, score:p.score, streak:p.streak, rank, total:list.length, correct:q.c, behind: ahead?ahead.name:null, gap: ahead?ahead.score-p.score:0});
+  }
+  sfx.buzz(); renderHost();
+}
+function endMsg(p){ const list=ranked(); return {t:"end", rank:list.indexOf(p)+1, total:list.length, score:p.score}; }
+function hostEnd(){
+  H.phase="end";
+  for(const p of H.players.values()) send(p,endMsg(p));
+  renderHost(); confetti(); sfx.end();
+}
+function tiles(q, reveal){
+  const grid=el("div","answers"), ci=q.opts.indexOf(q.c);
+  const counts=q.opts.map((_,i)=>[...H.players.values()].filter(p=>p.answers[H.i]&&p.answers[H.i].c===i).length);
+  const max=Math.max(1,...counts);
+  q.opts.forEach((o,i)=>{
+    const t=el("div","ans a"+i); t.append(el("span","sh",SHAPES[i]), el("span",null,o));
+    if(reveal){ t.append(el("span","cnt num",String(counts[i]))); const f=el("span","fill"); f.style.width=(counts[i]/max*100)+"%"; t.append(f); t.classList.add(i===ci?"right":"dim"); }
+    grid.append(t);
+  });
+  return grid;
+}
+function renderHost(){
+  cancelAnimationFrame(H.raf); app.textContent="";
+  const st=el("div","stage"); app.append(st);
+  const bar=el("div","bar");
+  const deckName=(DECKS.find(d=>d[0]===H.deck)||[,""])[1];
+  bar.append(el("span","pill",deckName), el("span","pill num","Code "+H.code));
+  if(H.phase==="question"||H.phase==="reveal"||H.phase==="board") bar.append(el("span","pill num",`Question ${H.i+1} of ${H.qs.length}`));
+  bar.append(el("span","spacer"));
+  const mute=btn(muted?"Sound: off":"Sound: on","btn ghost",()=>{ muted=!muted; mute.textContent=muted?"Sound: off":"Sound: on"; }); mute.style.padding="8px 14px"; mute.style.fontSize="14px"; bar.append(mute);
+  st.append(bar);
+
+  if(H.phase==="lobby"){
+    const card=el("div","code-card");
+    const url=location.href.split("#")[0];
+    card.append(el("div","label","Join at"), el("div","url",url), el("div","label","with game code"), el("div","code num",H.code));
+    st.append(card);
+    const ps=[...H.players.values()];
+    st.append(el("div","lobby-count num",String(ps.filter(p=>p.online).length)), el("p","muted",ps.length===1?"team waiting":"teams waiting"));
+    const ch=el("div","chips"); ps.forEach(p=>{ const s=el("span",p.online?"":"off",p.name); ch.append(s); }); st.append(ch);
+    const row=el("div","row"); const go=btn("Start game","btn",hostStart); go.style.fontSize="24px"; if(!ps.length) go.disabled=true; row.append(go); st.append(row);
+    return;
+  }
+  const q=H.qs[H.i];
+  if(H.phase==="question"){
+    const row=el("div","bar");
+    const clock=el("div","clock num",String(H.secs)); clock.id="hClock";
+    const ans=el("span","pill num","0/0 answered"); ans.id="hAns";
+    row.append(clock, ans, el("span","spacer"), btn("Skip timer","btn ghost",hostReveal));
+    st.append(row, el("p","q",q.q)); const v=visFor(q); if(v) st.append(v);
+    st.append(tiles(q,false));
+    updateAnswered();
+    let lastSec=H.secs;
+    const tick=()=>{
+      if(H.phase!=="question") return;
+      const left=Math.max(0,H.secs-(performance.now()-H.t0)/1000), sec=Math.ceil(left);
+      const c=$("hClock"); if(!c) return;
+      c.textContent=String(sec); c.classList.toggle("low",left<5);
+      if(sec<lastSec&&sec<5) sfx.tick(); lastSec=sec;
+      if(left<=0) return hostReveal();
+      H.raf=requestAnimationFrame(tick);
+    };
+    H.raf=requestAnimationFrame(tick);
+    return;
+  }
+  if(H.phase==="reveal"){
+    st.append(el("p","q",q.q), tiles(q,true));
+    const why=el("p","why"); why.append(el("b",null,q.c+". "), q.why); st.append(why);
+    const row=el("div","row"); const b=btn("Show scoreboard","btn",()=>{ H.phase="board"; renderHost(); }); row.append(b); st.append(row); b.focus();
+    return;
+  }
+  if(H.phase==="board"){
+    st.append(el("h2",null,"Scoreboard"));
+    const ol=el("ol","board");
+    ranked().slice(0,5).forEach((p,i)=>{ const li=el("li","pop"); li.append(el("span","rk num",String(i+1)), el("span","nm",p.name), el("span","dl num",p.delta?"+"+fmt(p.delta):""), el("span","num",fmt(p.score))); ol.append(li); });
+    st.append(ol);
+    const last=H.i+1>=H.qs.length;
+    const row=el("div","row"); const b=btn(last?"Final podium":"Next question","btn",nextQuestion); b.style.fontSize="22px"; row.append(b); st.append(row); b.focus();
+    return;
+  }
+  if(H.phase==="end"){
+    const list=ranked();
+    st.append(el("h2",null,"Final podium"));
+    const pod=el("div","podium");
+    for(const [cls,idx] of [["p2",1],["p1",0],["p3",2]]){ const p=list[idx]; if(!p) continue; const d=el("div",cls); d.append(el("b",null,String(idx+1)), el("span",null,p.name), el("span","num",fmt(p.score))); pod.append(d); }
+    st.append(pod);
+    if(list.length>3){ const ol=el("ol","board"); list.slice(3,10).forEach((p,i)=>{ const li=el("li"); li.append(el("span","rk num",String(i+4)), el("span","nm",p.name), el("span"), el("span","num",fmt(p.score))); ol.append(li); }); st.append(ol); }
+    const row=el("div","row"); row.append(btn("New game","btn",()=>{ try{ H.peer.destroy(); }catch{} H.players=new Map(); hostSetup(); })); st.append(row);
+  }
+}
+document.addEventListener("keydown",e=>{
+  if(!H.peer || e.target.tagName==="INPUT" || e.target.tagName==="BUTTON" || e.target.tagName==="SELECT") return;
+  if(e.key!=="Enter" && e.key!==" ") return;
+  e.preventDefault();
+  if(H.phase==="lobby"&&H.players.size) hostStart();
+  else if(H.phase==="question") hostReveal();
+  else if(H.phase==="reveal"){ H.phase="board"; renderHost(); }
+  else if(H.phase==="board") nextQuestion();
+});
+
+// =====================================================================
+// PLAYER (student device)
+// =====================================================================
+const P = { peer:null, conn:null, code:"", name:store.get("psl-name",""), key:store.get("psl-key",""), score:0, q:null, phase:"code", t0:0, raf:0 };
+if(!P.key){ P.key=Math.random().toString(36).slice(2)+Date.now().toString(36); store.set("psl-key",P.key); }
+
+function playerCode(err){
+  P.phase="code"; app.textContent="";
+  const box=el("div","center");
+  const h=el("h1"); h.append("Poster",el("br"),Object.assign(el("span","hl"),{textContent:"Showdown"}));
+  box.append(h, el("p",null,"Enter the game code on the big screen."));
+  const inp=el("input","big-input"); inp.id="code"; inp.inputMode="numeric"; inp.autocomplete="off"; inp.maxLength=6; inp.placeholder="Game code"; inp.value=P.code;
+  const e=el("div","err",err||""); e.setAttribute("role","alert");
+  const go=btn("Enter","btn",()=>{ const c=inp.value.replace(/\D/g,""); if(c.length!==6){ e.textContent="The code is 6 digits."; inp.focus(); return; } P.code=c; playerName(); });
+  inp.addEventListener("keydown",ev=>{ if(ev.key==="Enter") go.click(); });
+  box.append(inp,e,go, btn("I'm the teacher: host a game","linkbtn",hostSetup));
+  app.append(box); inp.focus();
+}
+function playerName(err){
+  P.phase="name"; app.textContent="";
+  const box=el("div","center");
+  box.append(el("div","label","Game "+P.code), el("h2",null,"Pick a team name"), el("p",null,"It shows on the big screen. Keep it school-appropriate."));
+  const inp=el("input","big-input"); inp.id="team"; inp.maxLength=20; inp.autocomplete="off"; inp.placeholder="Team name"; inp.value=P.name; inp.style.letterSpacing="0";
+  const e=el("div","err",err||""); e.setAttribute("role","alert");
+  const go=btn("Join game","btn",()=>{ const n=clean(inp.value); if(n.length<2){ e.textContent="Type at least 2 letters."; inp.focus(); return; } P.name=n; store.set("psl-name",n); go.disabled=true; go.textContent="Joining…"; connect(); });
+  inp.addEventListener("keydown",ev=>{ if(ev.key==="Enter") go.click(); });
+  box.append(inp,e,go, btn("Wrong code? Go back","linkbtn",()=>playerCode()));
+  app.append(box); inp.focus();
+}
+let joinTimer=0;
+function connect(){
+  if(!peerReady()) return;
+  status("Connecting…");
+  clearTimeout(joinTimer);
+  joinTimer=setTimeout(()=>{ if(P.phase==="name"){ playerName("Couldn't reach that game. Check the code, or ask your teacher if the game is open."); status("",false); } },12000);
+  const go=()=>{
+    const conn=P.peer.connect(PREFIX+P.code,{reliable:true});
+    P.conn=conn;
+    conn.on("open",()=>{ conn.send({t:"join",name:P.name,key:P.key}); });
+    conn.on("data",onHostMsg);
+    conn.on("close",()=>{ if(P.phase!=="end"){ status("Lost connection. Reconnecting…",true); setTimeout(()=>{ if(P.conn===conn) go(); },1500); } });
+  };
+  if(P.peer && !P.peer.destroyed && P.peer.open) return go();
+  if(P.peer) try{ P.peer.destroy(); }catch{}
+  P.peer=new Peer(undefined, PEER_OPTS);
+  P.peer.on("open",go);
+  P.peer.on("disconnected",()=>{ try{ P.peer.reconnect(); }catch{} });
+  P.peer.on("error",e=>{
+    if(e.type==="peer-unavailable"){ clearTimeout(joinTimer); if(P.phase==="name"||P.phase==="code") playerName("No game with that code is open. Check the code on the big screen."); else status("The game isn't reachable right now. Retrying…",true); status("",false); return; }
+    status("Connection problem: "+(e.type||"unknown"),true);
+  });
+}
+function onHostMsg(d){
+  if(!d||typeof d!=="object") return;
+  clearTimeout(joinTimer);
+  if(d.t==="bad-name") return playerName(String(d.msg||"Try another team name."));
+  status("Connected");
+  if(d.t==="welcome"){ P.name=clean(d.name); P.score=Number(d.score)||0; if(P.phase==="name"||P.phase==="code") playerWait(); return; }
+  if(d.t==="q") return playerQuestion(d);
+  if(d.t==="locked") return playerLocked();
+  if(d.t==="result") return playerResult(d);
+  if(d.t==="end") return playerEnd(d);
+}
+function header(){ const w=el("div","who"); w.append(el("span",null,P.name), el("span","num",fmt(P.score)+" pts")); return w; }
+function playerWait(){
+  P.phase="wait"; app.textContent="";
+  const box=el("div","pad");
+  box.append(header(), el("div","verdict ok pop","You're in!"), el("p","rank","Look for “"+P.name+"” on the big screen."), el("p","muted","The game starts when your teacher hits Start."));
+  app.append(box);
+}
+function playerQuestion(d){
+  if(!Array.isArray(d.opts)) return;
+  P.phase="q"; P.q=d; cancelAnimationFrame(P.raf); app.textContent="";
+  const box=el("div","pad");
+  box.append(header(), el("div","label",`Question ${Number(d.i)+1} of ${Number(d.n)}`), el("p","pq",String(d.q||"")));
+  const v=visFor({v:d.v}); if(v) box.append(v);
+  const bar=el("div"); bar.style.cssText="height:10px;background:var(--panel);border-radius:99px;overflow:hidden"; const fill=el("div"); fill.style.cssText="height:100%;background:var(--lime);transform-origin:left"; bar.append(fill); box.append(bar);
+  const grid=el("div","answers");
+  d.opts.slice(0,4).forEach((o,i)=>{
+    const b=btn(null,"ans a"+i,()=>{ grid.querySelectorAll("button").forEach(x=>x.disabled=true); try{ P.conn.send({t:"ans",i:d.i,c:i}); }catch{} tone([900],0.05,"sine",0.04); playerLocked(SHAPES[i]); });
+    b.append(el("span","sh",SHAPES[i]), el("span",null,String(o))); grid.append(b);
+  });
+  box.append(grid); app.append(box);
+  const secs=Number(d.secs)||20, start=performance.now()-(secs-(Number(d.left)||secs))*1000;
+  const tick=()=>{ if(P.phase!=="q") return; const left=Math.max(0,secs-(performance.now()-start)/1000); fill.style.transform=`scaleX(${left/secs})`; if(left<=0){ grid.querySelectorAll("button").forEach(x=>x.disabled=true); return; } P.raf=requestAnimationFrame(tick); };
+  P.raf=requestAnimationFrame(tick);
+}
+function playerLocked(shape){
+  if(P.phase==="locked") return;
+  P.phase="locked"; cancelAnimationFrame(P.raf); app.textContent="";
+  const box=el("div","pad");
+  box.append(header(), el("div","verdict pop", shape?shape:"Locked"), el("p","rank","Answer locked in"), el("p","muted","Waiting for the other teams…"));
+  app.append(box);
+}
+function playerResult(d){
+  P.phase="result"; cancelAnimationFrame(P.raf); P.score=Number(d.score)||0; app.textContent="";
+  const box=el("div","pad");
+  box.append(header());
+  if(d.ok){ box.append(el("div","verdict ok pop","Correct"), el("div","pts num","+"+fmt(d.pts))); sfx.right(); if(d.streak>=2) box.append(el("p","rank","Answer streak: "+d.streak)); }
+  else { box.append(el("div","verdict no pop", d.answered?"Incorrect":"Time's up")); box.append(el("p","rank","Answer: "+String(d.correct||""))); sfx.wrong(); }
+  box.append(el("p","rank",`You're in ${ordinal(Number(d.rank)||0)} place`));
+  if(d.behind) box.append(el("p","muted",`${fmt(d.gap)} points behind ${clean(d.behind)}`));
+  app.append(box);
+}
+function playerEnd(d){
+  P.phase="end"; cancelAnimationFrame(P.raf); P.score=Number(d.score)||0; app.textContent="";
+  const box=el("div","pad"), r=Number(d.rank)||0;
+  box.append(header(), el("div","label","Final results"), el("div","verdict ok pop",ordinal(r)), el("p","rank",fmt(P.score)+" points"), el("p","muted",`out of ${Number(d.total)||0} teams`));
+  if(r && r<=3){ confetti(); sfx.end(); }
+  box.append(btn("Play another game","btn ghost",()=>{ try{ P.conn.close(); }catch{} P.conn=null; P.code=""; P.score=0; playerCode(); }));
+  app.append(box);
+}
+
+// ---------- start ----------
+function landing(){ if(location.hash==="#host") hostSetup(); else playerCode(); }
+landing();
+})();
+</script>
+</body>
+</html>
