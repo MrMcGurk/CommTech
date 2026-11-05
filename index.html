@@ -6,7 +6,8 @@
 <title>Showdown Live</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@400;500;700&family=Playfair+Display&family=Roboto+Slab:wght@700&family=Pacifico&family=Bungee&display=swap">
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
 /* Layout: one file, two roles. The host screen is a projector stage; the player screen is a big-button answer pad. */
 :root{
@@ -621,8 +622,108 @@ function confetti(){
   const ps=Array.from({length:160},()=>({x:W/2+(Math.random()-.5)*W*.4,y:H*.35,vx:(Math.random()-.5)*15,vy:-Math.random()*15-4,r:Math.random()*7+4,c:cols[Math.floor(Math.random()*5)],a:Math.random()*6}));
   let t=0; (function f(){ ctx.clearRect(0,0,W,H); t++; for(const p of ps){ p.vy+=.35; p.x+=p.vx; p.y+=p.vy; p.a+=.2; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.fillStyle=p.c; ctx.fillRect(-p.r/2,-p.r/4,p.r,p.r/2); ctx.restore(); } if(t<170) requestAnimationFrame(f); else { ctx.clearRect(0,0,W,H); c.hidden=true; } })();
 }
-function peerReady(){ if(typeof Peer==="undefined"){ status("Couldn't load the connection library. Check the internet connection and reload.",true); return false; } return true; }
-const PEER_OPTS = { debug:0, config:{ iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:global.stun.twilio.com:3478"}] } };
+// =====================================================================
+// CONNECTION LAYER: Firebase Realtime Database.
+// Every device talks to Google's servers over ordinary HTTPS, so it works on
+// school Wi-Fi, home Wi-Fi and mobile data alike. The Peer/Conn classes below
+// mimic the small part of the PeerJS API the game uses.
+// Database layout:  peers/{id} = presence   inbox/{id}/{msg} = messages to id
+// =====================================================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDgxO5mImSF9o12losfbdnFKoKNJ1sGw0g",
+  authDomain: "trivia-fec54.firebaseapp.com",
+  databaseURL: "https://trivia-fec54-default-rtdb.firebaseio.com",
+  projectId: "trivia-fec54",
+  storageBucket: "trivia-fec54.firebasestorage.app",
+  messagingSenderId: "810632490782",
+  appId: "1:810632490782:web:58bf834de75ddc059ee30f"
+};
+const PEER_OPTS = {};
+let fdb = null;
+function peerReady(){
+  if(typeof firebase==="undefined"){ status("Couldn't load the connection library. Check the internet connection and reload.",true); return false; }
+  if(!FIREBASE_CONFIG.databaseURL){ status("The game server isn't set up yet (Firebase settings missing).",true); return false; }
+  if(!fdb){
+    try{ if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); fdb=firebase.database(); }
+    catch(e){ status("Couldn't start the game server: "+(e&&e.message||e),true); return false; }
+  }
+  return true;
+}
+const rid = () => Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+function emitter(){ const h={}; return { on:(e,f)=>{ (h[e]=h[e]||[]).push(f); }, emit:(e,...a)=>{ (h[e]||[]).slice().forEach(f=>{ try{ f(...a); }catch(err){ console.error(err); } }); } }; }
+
+class Conn {
+  constructor(owner, remote, cid){
+    const ev=emitter(); this._ev=ev; this.peer=remote; this.cid=cid; this._owner=owner;
+    this.open=false; this.closed=false; this._q=[];
+  }
+  on(e,f){ this._ev.on(e,f); return this; }
+  _post(k,d){ const m={from:this._owner.id, cid:this.cid, k}; if(d!==undefined) m.d=d; return fdb.ref("inbox/"+this.peer).push(m); }
+  _setOpen(){ if(this.open||this.closed) return; this.open=true; this._ev.emit("open"); const q=this._q; this._q=[]; q.forEach(m=>this.send(m)); }
+  send(msg){ if(this.closed) return; if(!this.open){ this._q.push(msg); return; } this._post("data", JSON.stringify(msg)); }
+  // Close this side if the other device's presence disappears (tab closed, network lost).
+  _watch(){ const r=fdb.ref("peers/"+this.peer); let seen=false; const cb=s=>{ if(s.exists()) seen=true; else if(seen) this._close(); }; r.on("value",cb); this._unwatch=()=>r.off("value",cb); }
+  _close(){ if(this.closed) return; this.closed=true; this.open=false; if(this._unwatch) this._unwatch(); this._owner.conns.delete(this.cid); this._ev.emit("close"); }
+  close(){ if(this.closed) return; try{ this._post("close"); }catch{} this._close(); }
+}
+
+class Peer {
+  constructor(id){
+    const ev=emitter(); this._ev=ev;
+    this.id=id||("p-"+rid()); this.open=false; this.destroyed=false; this.conns=new Map(); this._offs=[];
+    const me=fdb.ref("peers/"+this.id), inbox=fdb.ref("inbox/"+this.id);
+    // A host claims its game code; if someone already has it, pick another code.
+    const claim = id ? me.once("value").then(s=>{ if(s.exists()) throw {type:"unavailable-id"}; }) : Promise.resolve();
+    claim.then(()=>{
+      if(this.destroyed) return;
+      let down=false;
+      const info=fdb.ref(".info/connected");
+      const infoCb=s=>{
+        if(this.destroyed) return;
+        if(s.val()!==true){ if(this.open&&!down){ down=true; this._ev.emit("disconnected"); } return; }
+        me.onDisconnect().remove(); inbox.onDisconnect().remove();
+        me.set(Date.now()).then(()=>{
+          if(this.destroyed) return;
+          if(!this.open){ this.open=true; this._ev.emit("open",this.id); }
+          else if(down){ down=false; [...this.conns.values()].forEach(c=>c._close()); this._ev.emit("reconnected"); }
+        }).catch(e=>this._ev.emit("error",{type:"network",message:String(e&&e.message||e)}));
+      };
+      info.on("value",infoCb); this._offs.push(()=>info.off("value",infoCb));
+      const inCb=s=>{ const m=s.val(); s.ref.remove(); if(!this.destroyed) this._msg(m); };
+      inbox.on("child_added",inCb); this._offs.push(()=>inbox.off("child_added",inCb));
+    }).catch(e=>this._ev.emit("error", e&&e.type ? e : {type:"network", message:String(e&&e.message||e)}));
+  }
+  on(e,f){ this._ev.on(e,f); return this; }
+  _msg(m){
+    if(!m||!m.cid) return;
+    let c=this.conns.get(m.cid);
+    if(m.k==="open"){            // a student is connecting to this host
+      if(c) return;
+      c=new Conn(this, String(m.from), m.cid); this.conns.set(m.cid,c);
+      c._watch(); this._ev.emit("connection",c); c._post("ack"); c._setOpen();
+      return;
+    }
+    if(!c) return;
+    if(m.k==="ack") return c._setOpen();
+    if(m.k==="close") return c._close();
+    if(m.k==="data"){ let d; try{ d=JSON.parse(m.d); }catch{ return; } c._ev.emit("data",d); }
+  }
+  connect(target){
+    const c=new Conn(this, target, rid()); this.conns.set(c.cid,c);
+    fdb.ref("peers/"+target).once("value").then(s=>{
+      if(c.closed) return;
+      if(!s.exists()){ this.conns.delete(c.cid); c.closed=true; this._ev.emit("error",{type:"peer-unavailable"}); return; }
+      c._watch(); c._post("open");
+    }).catch(e=>this._ev.emit("error",{type:"network",message:String(e&&e.message||e)}));
+    return c;
+  }
+  reconnect(){ /* Firebase reconnects by itself */ }
+  destroy(){
+    if(this.destroyed) return; this.destroyed=true; this.open=false;
+    [...this.conns.values()].forEach(c=>c.close()); this._offs.forEach(f=>f());
+    try{ fdb.ref("peers/"+this.id).onDisconnect().cancel(); fdb.ref("peers/"+this.id).remove(); fdb.ref("inbox/"+this.id).remove(); }catch{}
+  }
+}
 
 // =====================================================================
 // HOST (teacher, on the projector)
@@ -663,7 +764,8 @@ function createGame(){
   H.peer=new Peer(PREFIX+H.code, PEER_OPTS);
   H.peer.on("open",()=>{ status("Game open"); H.phase="lobby"; renderHost(); });
   H.peer.on("connection",conn=>hostConn(conn));
-  H.peer.on("disconnected",()=>{ status("Reconnecting to the game server…",true); try{ H.peer.reconnect(); }catch{} });
+  H.peer.on("disconnected",()=>{ status("Reconnecting to the game server…",true); });
+  H.peer.on("reconnected",()=>{ status("Game open"); if(H.phase==="lobby") renderHost(); else updateAnswered(); });
   H.peer.on("error",e=>{
     if(e.type==="unavailable-id"){ createGame(); return; }
     if(e.type==="peer-unavailable") return;
@@ -951,7 +1053,7 @@ function connect(){
   P.peer.on("open",go);
   P.peer.on("disconnected",()=>{ try{ P.peer.reconnect(); }catch{} });
   P.peer.on("error",e=>{
-    if(e.type==="peer-unavailable"){ clearTimeout(joinTimer); if(P.phase==="connecting"||P.phase==="code"){ status("",false); playerCode("No game with that code is open. Check the code on the big screen."); } else status("The game isn't reachable right now. Retrying…",true); return; }
+    if(e.type==="peer-unavailable"){ clearTimeout(joinTimer); if(P.phase==="connecting"||P.phase==="code"){ status("",false); playerCode("No game with that code is open. Check the code on the big screen."); } else { status("The game isn't reachable right now. Retrying…",true); setTimeout(()=>{ if(P.phase!=="code") go(); },2500); } return; }
     status("Connection problem: "+(e.type||"unknown"),true);
   });
 }
