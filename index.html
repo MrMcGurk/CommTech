@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Poster Showdown Live</title>
+<title>Showdown Live</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@400;500;700&family=Playfair+Display&family=Roboto+Slab:wght@700&family=Pacifico&family=Bungee&display=swap">
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -87,11 +87,35 @@ select{background:var(--panel);color:var(--text);border:1px solid var(--line);bo
 .board li .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .board li .dl{font-size:18px;color:var(--good)}
 .board li:first-child .dl{color:var(--ink)}
-.podium{display:flex;align-items:flex-end;justify-content:center;gap:12px}
-.podium div{flex:1;max-width:240px;border-radius:12px 12px 0 0;display:flex;flex-direction:column;align-items:center;padding:14px 8px;color:var(--ink);font-weight:700;min-width:0;text-align:center}
-.podium b{font-family:var(--display);font-size:52px;line-height:1}
-.podium span{font-size:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
-.podium .p1{background:var(--lime);height:280px}.podium .p2{background:var(--cyan);height:210px}.podium .p3{background:var(--orange);height:160px}
+/* finale: podium blocks rise one at a time, 3rd → 2nd → 1st */
+.finale{position:relative}
+.finale::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse 60% 70% at 50% 75%,rgba(225,255,46,.10),transparent 70%);pointer-events:none}
+.announce{font-family:var(--display);font-size:clamp(40px,7vw,84px);line-height:1;text-align:center;text-transform:uppercase;min-height:1.1em;margin-top:2vh}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:14px;min-height:min(56vh,480px);position:relative}
+.podium .slot{flex:1;max-width:260px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0}
+.podium .who{display:flex;flex-direction:column;align-items:center;gap:2px;opacity:0;transform:translateY(30px) scale(.6);transition:opacity .5s .55s,transform .6s .55s cubic-bezier(.2,1.6,.4,1);text-align:center;max-width:100%}
+.podium .who .em{font-size:clamp(56px,9vw,104px);line-height:1.1}
+.podium .who .nm{font-weight:700;font-size:clamp(20px,2.6vw,30px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.podium .who .sc{color:var(--muted);font-size:18px}
+.podium .block{width:100%;border-radius:14px 14px 0 0;display:flex;justify-content:center;padding-top:14px;color:var(--ink);transform:scaleY(0);transform-origin:bottom;transition:transform .7s cubic-bezier(.2,1.2,.4,1)}
+.podium .block b{font-family:var(--display);font-size:clamp(48px,7vw,80px);line-height:1}
+.podium .p1 .block{background:var(--lime);height:min(30vh,260px)}
+.podium .p2 .block{background:var(--cyan);height:min(22vh,190px)}
+.podium .p3 .block{background:var(--orange);height:min(15vh,130px)}
+.podium .slot.show .block{transform:scaleY(1)}
+.podium .slot.show .who{opacity:1;transform:none}
+.podium .slot.lit .block{box-shadow:0 0 0 4px var(--lime),0 0 80px 10px rgba(225,255,46,.55);animation:glow 1.4s ease-in-out infinite alternate}
+.podium .slot.lit .who .em{animation:bounce 1s ease-in-out infinite}
+@keyframes glow{to{box-shadow:0 0 0 4px var(--lime),0 0 120px 24px rgba(225,255,46,.75)}}
+@keyframes bounce{50%{transform:translateY(-12px)}}
+.drum{font-size:clamp(90px,26vw,150px);line-height:1.1;animation:shake .18s linear infinite}
+@keyframes shake{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
+.setpick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.setbtn{background:var(--panel);border:3px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left}
+.setbtn b{font-family:var(--display);font-size:clamp(26px,4vw,36px);font-weight:400;text-transform:uppercase;line-height:1}
+.setbtn .muted{font-size:14px}
+.setbtn[aria-pressed="true"]{border-color:var(--lime);background:var(--panel2)}
+@media (max-width:520px){.setpick{grid-template-columns:1fr}}
 
 /* mascot picker */
 .mascots{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
@@ -125,7 +149,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%;heigh
 <body>
 <div class="wrap">
   <div class="top">
-    <div class="brand">TGJ3M<span>POSTER SHOWDOWN LIVE</span></div>
+    <div class="brand">BVG<span id="brandName">SHOWDOWN LIVE</span></div>
     <span class="status" id="status"></span>
   </div>
   <main id="app"></main>
@@ -236,8 +260,156 @@ const RAW = [
 ["talk","Invisible lines that organize a layout make a…","Grid",["Mask","Swatch","Filter"],"Use a grid with a clear focal point."],
 ["talk","Lining elements up so the design feels organized is…","Alignment",["Saturation","Iteration","Tracking"],"Pick a system and stick to it."],
 ];
-const Q = RAW.map(([d,q,c,w,why,v]) => ({d,q,c,w,why,v}));
-const DECKS = [["mix","Mixed Mayhem (all decks)"],["col","Colour & Texture"],["type","Type Talks"],["hist","Stop. Look. Act."],["talk","Talk Like a Designer"]];
+// Logo Challenge question bank (TGJ20 Logo unit). [deck, question, correct, [wrong...], why, visual?]
+const LOGO_RAW = [
+["basics","A logo is…","A symbol, word or picture that represents a brand",["A long description of a company","A company's slogan only","A photo of the company's building"],"It's often the first thing people see, and it helps them remember the brand."],
+["basics","Which is NOT one of the four golden rules of a logo?","Detailed",["Simple","Memorable","Versatile"],"Simple, memorable, versatile and relevant."],
+["basics","A logo that looks good big or small, in colour or black and white, is…","Versatile",["Relevant","Decorative","Complicated"],"It has to work on a sticker and on a banner."],
+["basics","A logo that fits the brand's personality and message is…","Relevant",["Versatile","Random","Trendy"],"Match the logo to what the brand stands for."],
+["basics","“Easy to recognize and minimalistic” describes which golden rule?","Simple",["Relevant","Versatile","Expensive"],"Simple logos are easier to remember and reproduce."],
+["basics","In logo design, a circle usually suggests…","Community, unity and friendship",["Stability and security","Energy and direction","Danger"],"Circles feel whole, harmonious and inclusive."],
+["basics","A square or rectangle usually suggests…","Stability, trust and professionalism",["Speed and excitement","Playfulness","Mystery"],"Solid, dependable shapes."],
+["basics","A triangle usually suggests…","Energy, ambition and direction",["Calm and rest","Softness","Old age"],"Triangles point somewhere and feel dynamic."],
+["basics","Diagonal lines in a logo suggest…","Action, speed and excitement",["Peace and balance","Power and authority","Sleep"],"Horizontal = peace and balance. Vertical = power and authority."],
+["basics","Horizontal lines suggest…","Peace, reliability and balance",["Speed","Danger","Excitement"],"Think of a calm horizon."],
+["basics","Vertical lines suggest…","Power, authority and confidence",["Calm and rest","Speed","Playfulness"],"Tall and upright."],
+["basics","Yellow in a logo often means…","Happiness, optimism and warmth",["Trust and calm","Nature and growth","Mystery"],"Energy, friendliness and creativity too."],
+["basics","Blue in a logo often means…","Trust, calm and confidence",["Passion and boldness","Happiness","Danger"],"That's why so many tech and bank logos are blue."],
+["basics","Green in a logo often means…","Nature, growth and health",["Power and intensity","Sadness","Luxury only"],"Freshness and eco-friendliness too."],
+["basics","Red in a logo often means…","Energy, passion and excitement",["Calm and serenity","Nature","Trust"],"Also love, intensity and boldness."],
+["basics","Bold type in a logo feels…","Strong, powerful and impactful",["Elegant and personal","Soft and quiet","Old-fashioned"],"Good for sports, tech and automotive brands."],
+["basics","Script type in a logo feels…","Creative, warm and elegant",["Tough and industrial","Technical","Cold"],"Common for lifestyle, fashion and food brands."],
+["basics","Serif type in a logo feels…","Trustworthy, serious and reliable",["Silly and casual","Futuristic","Messy"],"Serifs are the small decorative “feet” on letters."],
+["basics","Hiding a second image in the empty space of a logo uses…","Negative space",["Gradients","Clip art","Drop shadows"],"Like an arrow hidden between two letters."],
+["basics","How many colours should a logo usually have?","1–3",["5–6","8 or more","As many as possible"],"Each extra colour costs money to print and embroider."],
+["basics","Your brain remembers which things about a logo first?","Shapes and colours",["Small details","The exact font name","The fine print"],"Then details. Words come later."],
+["basics","The 5-second test checks whether…","Someone can recognize the logo instantly",["The logo loads in 5 seconds","You can draw it in 5 seconds","It has 5 colours"],"If they can't, simplify."],
+["basics","Why avoid common clip art in a logo?","It isn't original, and anyone can use it",["It's always too colourful","It's too hard to find","It prints too slowly"],"Make it your own."],
+["basics","Which is a downside of an AI-generated logo?","You can't trademark it",["It's always original","It's easy to edit as vectors","It uses custom fonts"],"Also: no editing, low quality, and stolen intellectual property."],
+["basics","A logo built only from the brand's name, in type, is a…","Wordmark",["Monogram","Mascot","Badge"],"Make the title the logo."],
+["basics","A logo that uses just the first letter or initials is a…","Monogram",["Wordmark","Lockup","Swatch"],"One strong letter can be very memorable."],
+["basics","Icon + name together is which logo version?","Primary",["Wordmark","Icon only","One-colour"],"Used on posters, websites and program covers."],
+["basics","Which logo version suits an app icon or social profile picture?","Icon only",["Wordmark","Letterhead","Primary with tagline"],"Small spaces need a simple mark."],
+["basics","Why make a one-colour version of a logo?","For embroidery, stamps, vinyl and cheap printing",["To make it look old","Because colour isn't allowed","To hide mistakes"],"It must still work with one ink."],
+["basics","Different versions of one logo for different uses are called…","Lockups",["Artboards","Swatches","Templates"],"Primary, icon only, wordmark and one-colour."],
+
+["lcol","Which are the primary colours?","Red, yellow, blue",["Orange, green, purple","Pink, teal, lime","Black, white, grey"],"You can't mix them from other colours."],
+["lcol","Secondary colours are made by…","Mixing two primaries",["Adding white","Mixing a primary and a secondary","Adding black"],"Orange, green and purple."],
+["lcol","Red-orange and yellow-green are…","Tertiary colours",["Primary colours","Secondary colours","Neutrals"],"A primary mixed with a secondary."],
+["lcol","Hue is…","The colour family",["How light or dark a colour is","How bright or dull a colour is","The colour's price"],"Red, blue, green."],
+["lcol","Saturation is…","How intense or dull a colour is",["How light or dark it is","The colour family","How big it is"],"Saturation = how much colour."],
+["lcol","Value is…","How light or dark a colour is",["How intense it is","The colour family","The hex code"],"Value = how much light. Baby blue → navy."],
+["lcol","In Adobe's HSB mode, value is the slider called…","B (Brightness)",["H (Hue)","S (Saturation)","V (Vibrance)"],"Adobe calls value Brightness."],
+["lcol","Lowering saturation all the way to 0% gives you…","Grey",["Black","White","The opposite colour"],"The colour drains away."],
+["lcol","High saturation feels…","Loud: sports and kids' brands",["Calm and serious","Vintage","Sad"],"Low saturation feels calm, vintage or serious."],
+["lcol","Warm colours are…","Red, orange, yellow",["Blue, green, purple","Black and white","Pastels only"],"Energy, action, excitement."],
+["lcol","Cool colours suggest…","Calm, trust and stability",["Heat and energy","Danger","Excitement"],"Blue, green, purple."],
+["lcol","Name this colour harmony.","Complementary",["Analogous","Monochromatic","Triadic"],"Opposites on the wheel: the most punch.",{sw:["#2164D9","#FF7719"]}],
+["lcol","Name this colour harmony.","Analogous",["Complementary","Triadic","Split-complementary"],"Neighbours on the wheel: harmonious and natural.",{sw:["#E53935","#FB8C00","#FDD835"]}],
+["lcol","Name this colour harmony.","Monochromatic",["Analogous","Triadic","Complementary"],"One hue in different values: calm and classy.",{sw:["#9DBDF2","#5787D9","#0B3D91","#0A2C66"]}],
+["lcol","Name this colour harmony.","Triadic",["Analogous","Complementary","Monochromatic"],"Three evenly spaced colours: bright and playful.",{sw:["#0B3D91","#F20C42","#F2DE18"]}],
+["lcol","One colour plus the two neighbours of its opposite is…","Split-complementary",["Triadic","Analogous","Monochromatic"],"Contrast with less clash."],
+["lcol","In the 60-30-10 rule, the 10% is the…","Accent colour that draws the eye",["Background colour","Support colour","Text colour only"],"60% dominant, 30% support, 10% accent."],
+["lcol","What contrast ratio should a logo or big text aim for?","3:1",["1:1","1.5:1","10:1 minimum"],"Small text needs 4.5:1."],
+["lcol","What contrast ratio does small text need?","4.5:1",["2:1","3:1","1:1"],"Logos and big text need 3:1."],
+["lcol","If your logo disappears in black and white, it…","Fails the greyscale test",["Passes the greyscale test","Is complementary","Is monochromatic"],"Pair a light value with a dark one."],
+["lcol","Does this colour pair pass the greyscale test?","No: the values are too similar",["Yes: red and green are opposites","Yes: any two colours pass","Only when printed"],"Similar values disappear in black and white.",{pair:["#43A047","#E53935"]}],
+["lcol","Screens (web, apps, social) use which colour system?","RGB (light)",["CMYK (ink)","Thread colours","Pantone only"],"Use hex codes like #FFB81C."],
+["lcol","Printing posters and tickets uses which colour system?","CMYK (ink)",["RGB (light)","HSB","Hex"],"Very bright screen colours can look duller on paper."],
+["lcol","Spot colours like Pantone are used for…","Jerseys, T-shirts and banners",["Websites","Phone apps","Slideshows"],"One exact ink per colour, so fewer colours is cheaper."],
+["lcol","Why don't tiny details and gradients work on an embroidered crest?","Embroidery uses a limited thread palette",["Hats can't be blue","Thread is too bright","Gradients aren't allowed"],"Keep embroidered logos bold and flat."],
+["lcol","A colour written like #0B3D91 is a…","Hex code",["Pantone number","CMYK value","Font name"],"Record your palette's hex codes."],
+["lcol","Put the palette-building steps in order.","Extract → Reduce → Check → Record",["Record → Check → Extract → Reduce","Check → Extract → Record → Reduce","Reduce → Record → Extract → Check"],"Pull colours, cut down, test contrast, write down hex codes."],
+["lcol","Why do so many fast-food brands use red and yellow?","They feel energetic, warm and exciting",["They are the cheapest inks","They are cool colours","They mean calm and trust"],"Warm colours grab attention and feel lively."],
+
+["illy","Why do we build logos as vectors?","They scale to any size and stay sharp",["They look blurry on purpose","They're made of tiny squares","They only work in Photoshop"],"A logo has to fit a sticker and a banner."],
+["illy","Pixel (raster) images get ___ when enlarged.","Blurry or jagged",["Sharper","Smaller","Vector"],"Pixels are tiny squares: great for photos, not logos."],
+["illy","Which file type is a vector format?",".svg",[".jpg",".png",".gif"],".ai and .svg are vector. .png and .jpg are pixels."],
+["illy","The shortcut for the Pen tool is…","P",["V","T","M"],"V = Selection, A = Direct Selection."],
+["illy","The Selection tool shortcut is…","V",["A","P","L"],"Selection moves whole objects."],
+["illy","Which tool grabs a single anchor point or handle?","Direct Selection (A)",["Selection (V)","Rectangle (M)","Type (T)"],"Use it to fix paths."],
+["illy","The Shape Builder shortcut is…","Shift + M",["Shift + O","Ctrl/Cmd + 7","Shift + C"],"Merge or cut overlapping shapes."],
+["illy","The Ellipse tool shortcut is…","L",["E","M","O"],"M is the Rectangle tool."],
+["illy","On a path, where can the direction change?","At an anchor point",["On a handle","In a swatch","On the artboard"],"Anchor points are the corners and turning points."],
+["illy","What do handles control?","The direction and depth of a curve",["The fill colour","The font size","The artboard size"],"Longer handles = rounder, bigger curves."],
+["illy","The line between two anchor points is a…","Segment",["Handle","Swatch","Layer"],"All of it together is a path."],
+["illy","With the Pen tool, how do you make a straight line?","Click, don't drag",["Click and drag","Double-click","Hold Alt and drag"],"Drag to make curves."],
+["illy","With the Pen tool, how do you make a curve?","Click and drag",["Just click","Press Delete","Hold Shift and click"],"Dragging pulls out handles."],
+["illy","Holding Shift with the Pen tool…","Snaps to 45° and 90°",["Deletes the path","Changes colour","Makes a curve"],"Great for clean straight lines."],
+["illy","To turn a sharp corner right after drawing a curve, you…","Alt/Option-click the anchor you just made",["Press Ctrl + Z","Double-click the artboard","Switch to the Type tool"],"One handle disappears so the next segment can turn."],
+["illy","Fewer anchor points usually give you…","Smoother curves",["Bumpier curves","More colours","Bigger files only"],"Put points at the top, bottom and sides of a curve."],
+["illy","Which tool curves the path through the points you click?","Curvature tool",["Pen tool","Rectangle tool","Eyedropper"],"Shift + ~. Great for organic shapes."],
+["illy","With Shape Builder, Alt/Option-clicking a piece…","Deletes it",["Merges it","Colours it","Duplicates it"],"Drag across pieces to merge them."],
+["illy","Which Pathfinder button joins shapes into one?","Unite",["Minus Front","Intersect","Exclude"],"Minus Front cuts the top shape out of the one below."],
+["illy","Which Pathfinder button keeps only the overlap?","Intersect",["Unite","Exclude","Minus Front"],"Exclude removes the overlap and keeps the rest."],
+["illy","Ticking “Template” on a sketch layer…","Dims and locks it so you can trace over it",["Deletes it","Turns it into a vector","Changes its colour"],"Draw on a new layer above it."],
+["illy","Type → Create Outlines turns text into…","Shapes with anchor points",["A new font","A photo","A swatch"],"Outlined type can't be retyped, so keep an editable copy."],
+["illy","Why create outlines before sending a logo?","So it doesn't need the font installed",["To make it blurry","To add colours","To shrink the file to zero"],"Live type swaps fonts if they're missing."],
+["illy","Which tool puts text along a circle or arc?","Type on a Path",["Pen tool","Shape Builder","Eyedropper"],"Hold the Type tool to find it."],
+["illy","With a global swatch, editing the swatch…","Updates every shape that uses it",["Only changes new shapes","Deletes the colour","Converts it to CMYK"],"Tick Global when you make the swatch."],
+["illy","Which tool grabs a colour by clicking on it?","Eyedropper (I)",["Pen (P)","Selection (V)","Ellipse (L)"],"Then save it as a swatch."],
+["illy","Recolor Artwork is useful for…","Trying new palettes on a copy of your logo",["Drawing curves","Typing text","Exporting PNGs"],"Alt/Option-drag a copy first."],
+["illy","The Artboard tool shortcut is…","Shift + O",["Shift + M","Shift + C","Ctrl/Cmd + O"],"Alt/Option-drag an artboard to copy it with its art."],
+["illy","What's the shortcut to undo?","Ctrl/Cmd + Z",["Ctrl/Cmd + U","Ctrl/Cmd + D","Shift + Z"],"Undo is your best friend."],
+["illy","Which tool switches an anchor between smooth and corner?","Anchor Point tool (Shift + C)",["Add Anchor (+)","Rectangle (M)","Type (T)"],"Click a point to switch it."],
+
+["ltype","The main vertical stroke of a letter is the…","Stem",["Crossbar","Bowl","Terminal"],"Think of the upright strokes of an H."],
+["ltype","The horizontal stroke across a letter, like in H, is the…","Crossbar",["Stem","Descender","Serif"],"It crosses between the stems."],
+["ltype","The curve around an enclosed space, like in p, is the…","Bowl",["Counter","Stem","Ascender"],"The space inside it is the counter."],
+["ltype","The enclosed white space inside a letter is the…","Counter",["Bowl","Terminal","Baseline"],"Think of the hole in an e or o."],
+["ltype","The part that rises above the x-height, like in d, is the…","Ascender",["Descender","Crossbar","Serif"],"It reaches the ascender line."],
+["ltype","The part that drops below the baseline, like in p or y, is the…","Descender",["Ascender","Stem","Counter"],"It reaches the descender line."],
+["ltype","The line letters sit on is the…","Baseline",["Cap height","x-height","Ascender line"],"Descenders drop below it."],
+["ltype","The height of lowercase letters like x is the…","x-height",["Cap height","Baseline","Leading"],"Ascenders rise above it."],
+["ltype","The height of capital letters is the…","Cap height",["x-height","Baseline","Descender line"],"Usually just below the ascender line."],
+["ltype","The small foot at the end of a stroke is a…","Serif",["Terminal","Stem","Bowl"],"Typefaces without them are sans serif."],
+["ltype","The end of a stroke that has no serif is a…","Terminal",["Counter","Crossbar","Baseline"],"Like the tip of the curve on an e."],
+["ltype","Which classification is this?","Serif",["Sans serif","Script","Display"],"Small feet: classic and trustworthy.",{font:"'Playfair Display',Georgia,serif",w:400}],
+["ltype","Which classification is this?","Slab serif",["Serif","Script","Sans serif"],"Thick, blocky serifs: sturdy and bold.",{font:"'Roboto Slab',Rockwell,serif",w:700}],
+["ltype","Which classification is this?","Script",["Display","Serif","Slab serif"],"Looks handwritten: elegant or friendly.",{font:"'Pacifico','Brush Script MT',cursive",w:400}],
+["ltype","Which classification is this?","Display",["Serif","Script","Slab serif"],"Made to be big: titles only, never body text.",{font:"'Bungee',Impact,sans-serif",w:400}],
+["ltype","“Sans” in sans serif means…","Without",["Small","Strong","Slanted"],"Sans serif = without feet."],
+["ltype","Sans serif typefaces are best described as…","Clean and modern",["Classic and literary","Handwritten","Decorative only"],"Used on screens, apps and signs."],
+["ltype","Kerning is the space between…","Two letters",["Lines of text","A whole word","Paragraphs"],"Alt/Option + arrow keys in Illustrator."],
+["ltype","Tracking is the even spacing across…","A whole word",["Two letters only","Lines of text","The page edge"],"Select the word, then Alt/Option + arrows."],
+["ltype","Leading is the space between…","Lines of text",["Two letters","Words","Columns"],"Set it in the Character panel."],
+["ltype","Visual hierarchy is…","The order your eye reads a design",["The number of fonts used","The size of the file","The colour palette"],"What you see first, second and last."],
+["ltype","What is a designer's strongest tool for creating hierarchy?","Size",["Texture","Font count","Rotation"],"Also weight, colour, contrast, white space and position."],
+["ltype","In a three-level hierarchy, level 1 (large) is the…","Headline",["Body text","Price","Website"],"It grabs attention. Only one per design."],
+["ltype","The squint test tells you…","What stands out as level 1",["If the spelling is right","The hex codes","The file size"],"Blur your eyes. What you still see is level 1."],
+["ltype","Small body text and details are read…","Last",["First","Second","Never"],"They inform people who are already interested."],
+["ltype","How many fonts should a logo use?","1–2",["4–5","6 or more","None"],"Keep it readable at small size."],
+
+["proc","Put the first three steps of the engineering design process in order.","Define → Research → Imagine/Plan",["Create → Define → Test/Refine","Research → Communicate → Define","Imagine/Plan → Create → Define"],"Then Create, Test/Refine and Communicate."],
+["proc","How many steps are in the engineering design process?","6",["3","4","10"],"Define, Research, Imagine/Plan, Create, Test/Refine, Communicate."],
+["proc","Which step asks who it's for, what problem we're solving, and what the limits are?","Define",["Research","Create","Communicate"],"Step 1."],
+["proc","Looking at what already exists and finding trends happens in…","Research",["Define","Create","Communicate"],"Step 2."],
+["proc","Thumbnails and developed sketches happen in…","Imagine/Plan",["Research","Test/Refine","Communicate"],"Step 3."],
+["proc","The 5-second, small-size and black-and-white tests happen in…","Test/Refine",["Define","Imagine/Plan","Communicate"],"Step 5: show real people and collect honest feedback."],
+["proc","Pitching your design to the client is which step?","Communicate",["Define","Research","Create"],"Step 6."],
+["proc","The design process is…","A loop, not a line",["Always done once, in order","Only for engineers","Optional"],"Feedback sends you back to redesign."],
+["proc","Gap's 2010 logo was dropped after about a week. Which step was skipped?","Test/Refine",["Communicate","Create","Define"],"Customers hated it. Testing first would have caught it."],
+["proc","Which of these is inspiration, not copying?","Studying trends in shapes, colours and styles",["Tracing someone's logo","Using clip art","Image Trace on someone else's work"],"If you can point to the logo you copied, it's copying."],
+["proc","A logo that a company legally owns is a…","Trademark",["Thumbnail","Swatch","Mood board"],"Copying a real logo can get a business sued."],
+["proc","A mood board is…","A collage of images, colours, fonts and words showing the look and feel",["The final logo","A list of due dates","A font file"],"Your research, organised onto one page."],
+["proc","Which makes a STRONG mood board?","6–10 carefully chosen, labelled references",["40 random images","Only things you personally like","No words or notes"],"Choose for your audience and label everything."],
+["proc","Which is NOT a reason designers use mood boards?","To skip sketching",["To find patterns and trends","To pick a direction","To show the client the vibe"],"Mood boards also keep you focused."],
+["proc","A thumbnail is…","A tiny, fast, rough sketch",["A finished logo","A colour palette","A vector file"],"Shapes and layout only, no detail."],
+["proc","During a thumbnail sprint, what comes first?","Quantity: bad ideas are allowed",["Perfection","Colour","Final details"],"12 ideas in 12 minutes."],
+["proc","When choosing your strongest thumbnails, pick…","Ideas that differ, not versions of one idea",["Three copies of the same idea","Only the most detailed one","The smallest one"],"Which would your audience recognize fastest?"],
+["proc","If a design wouldn't work at stamp size, you should…","Simplify it",["Add more detail","Add a gradient","Make the text smaller"],"From thumbnail to sketch: redraw, clean up, simplify."],
+["proc","When annotating a sketch, C-F-S stands for…","Colour, Font, Shape",["Copy, Fill, Stroke","Crop, Flip, Save","Cyan, Fuchsia, Silver"],"Explain why you chose each."],
+["proc","Why keep every version of a design (v1, v2, v3)?","It's evidence of your design process",["To fill up the drive","Because old versions are always better","So you can delete them later"],"Saved versions show how you tested and refined."],
+];
+
+const toQ = raw => raw.map(([d,q,c,w,why,v]) => ({d,q,c,w,why,v}));
+// Each class gets its own quiz set; the host picks one on the setup screen.
+const SETS = {
+  poster: { name:"Poster Showdown", tag:"TGJ3M · Poster Project", Q:toQ(RAW),
+    decks:[["mix","Mixed Mayhem (all decks)"],["col","Colour & Texture"],["type","Type Talks"],["hist","Stop. Look. Act."],["talk","Talk Like a Designer"]] },
+  logo: { name:"Logo Challenge", tag:"TGJ20 · Logo Design", Q:toQ(LOGO_RAW),
+    decks:[["mix","Mixed Mayhem (all decks)"],["basics","Logo Basics"],["lcol","Colour Theory"],["illy","Illustrator Tools"],["ltype","Type & Hierarchy"],["proc","Design Process"]] }
+};
 // Teams pick a mascot instead of typing a name, so nothing inappropriate can appear on screen.
 const MASCOTS = [
   ["panda","🐼","Panda"],["fox","🦊","Fox"],["koala","🐨","Koala"],["bunny","🐰","Bunny"],["penguin","🐧","Penguin"],["otter","🦦","Otter"],
@@ -289,16 +461,27 @@ const PEER_OPTS = { debug:0, config:{ iceServers:[{urls:"stun:stun.l.google.com:
 // =====================================================================
 // HOST (teacher, on the projector)
 // =====================================================================
-const H = { peer:null, code:"", players:new Map(), qs:[], i:-1, secs:20, phase:"setup", t0:0, raf:0, deck:"mix" };
+const H = { peer:null, code:"", players:new Map(), qs:[], i:-1, secs:20, phase:"setup", t0:0, raf:0, deck:"mix", set:store.get("psl-set","poster"), timers:[] };
+if(!SETS[H.set]) H.set="poster";
 // player: {key, name, conn, online, score, streak, last:{c, pts, ok}, delta}
+function brand(name){ $("brandName").textContent = (name||"Showdown").toUpperCase()+" LIVE"; }
 
 function hostSetup(){
   H.phase="setup"; app.textContent="";
-  const box=el("div","center");
+  const box=el("div","center"); box.style.maxWidth="720px";
   box.append(el("div","label","Teacher · put this on the projector"), el("h2",null,"Host a live game"));
+  const sets=el("div","setpick");
+  for(const [k,s] of Object.entries(SETS)){
+    const b=btn(null,"setbtn",()=>{ H.set=k; store.set("psl-set",k); hostSetup(); });
+    b.setAttribute("aria-pressed",String(H.set===k));
+    b.append(el("span","label",s.tag), el("b",null,s.name), el("span","muted",s.Q.length+" questions"));
+    sets.append(b);
+  }
+  box.append(sets);
+  const set=SETS[H.set]; brand(set.name);
   const opts=el("div","opts");
   const mk=(id,label,list,val)=>{ const l=el("label"); l.append(el("span","label",label)); const s=el("select"); s.id=id; for(const [v,t] of list){ const o=el("option",null,t); o.value=v; s.append(o);} s.value=String(val); l.append(s); return l; };
-  opts.append(mk("hDeck","Deck",DECKS,"mix"), mk("hN","Questions",[[10,"10"],[15,"15"],[20,"20"]],10), mk("hT","Seconds per question",[[10,"10"],[20,"20"],[30,"30"]],20));
+  opts.append(mk("hDeck","Deck",set.decks,"mix"), mk("hN","Questions",[[10,"10"],[15,"15"],[20,"20"]],10), mk("hT","Seconds per question",[[10,"10"],[20,"20"],[30,"30"]],20));
   box.append(opts, el("p",null,"Students join on their own devices with a game code and pick an animal mascot for their team. Faster correct answers earn more points."));
   const row=el("div","row"); row.append(btn("Create game","btn",createGame), btn("Back","btn ghost",landing)); box.append(row);
   app.append(box);
@@ -306,7 +489,7 @@ function hostSetup(){
 function createGame(){
   if(!peerReady()) return;
   H.deck=$("hDeck").value; H.secs=+$("hT").value;
-  const pool=Q.filter(q=>H.deck==="mix"||q.d===H.deck);
+  const pool=SETS[H.set].Q.filter(q=>H.deck==="mix"||q.d===H.deck);
   H.qs=shuffle(pool).slice(0,+$("hN").value).map(q=>({...q, opts: q.w.length===1?["True","False"]:shuffle([q.c,...q.w])}));
   H.code=String(Math.floor(100000+Math.random()*900000));
   status("Creating game…");
@@ -325,7 +508,7 @@ function createGame(){
 function send(p,msg){ if(p.conn && p.online){ try{ p.conn.send(msg); }catch{} } }
 H.conns = new Set();
 const takenList = () => [...H.players.values()].map(p=>p.mascot);
-function sendMascots(conn){ try{ conn.send({t:"mascots", taken:takenList(), ended:H.phase==="end"}); }catch{} }
+function sendMascots(conn){ try{ conn.send({t:"mascots", taken:takenList(), ended:H.phase==="end", quiz:SETS[H.set].name}); }catch{} }
 function broadcastMascots(){ for(const c of H.conns) if(![...H.players.values()].some(p=>p.conn===c)) sendMascots(c); }
 function hostConn(conn){
   H.conns.add(conn);
@@ -357,9 +540,9 @@ function hostJoin(conn,d){
 }
 function attach(p,conn){
   p.conn=conn; p.online=true;
-  send(p,{t:"welcome",name:p.name,mascot:p.mascot,score:p.score});
+  send(p,{t:"welcome",name:p.name,mascot:p.mascot,score:p.score,quiz:SETS[H.set].name});
   if(H.phase==="question"){ const q=H.qs[H.i]; if(!p.answers[H.i]) send(p,qMsg(q)); else send(p,{t:"locked"}); }
-  else if(H.phase==="end") send(p,endMsg(p));
+  else if(H.phase==="end") send(p, H.revealed ? endMsg(p) : {t:"suspense"});
   if(H.phase==="lobby") renderHost(); else updateAnswered();
 }
 function qMsg(q){ return {t:"q", i:H.i, n:H.qs.length, q:q.q, opts:q.opts, secs:H.secs, v:q.v||null, left:Math.max(0,H.secs-(performance.now()-H.t0)/1000)}; }
@@ -406,10 +589,42 @@ function hostReveal(){
   sfx.buzz(); renderHost();
 }
 function endMsg(p){ const list=ranked(); return {t:"end", rank:list.indexOf(p)+1, total:list.length, score:p.score}; }
+// Phones show a drumroll screen until the projector has revealed 1st place.
 function hostEnd(){
-  H.phase="end";
+  H.phase="end"; H.revealed=false;
+  for(const p of H.players.values()) send(p,{t:"suspense"});
+  renderHost();
+}
+function clearTimers(){ H.timers.forEach(clearTimeout); H.timers=[]; }
+function drumroll(ms){ const n=Math.floor(ms/70); for(let i=0;i<n;i++) H.timers.push(setTimeout(()=>tone([110+(i%2)*14],0.05,"triangle",0.05+0.04*i/n),i*70)); }
+function finishReveal(){
+  if(H.revealed) return; H.revealed=true; clearTimers();
+  document.querySelectorAll(".podium .slot").forEach(s=>s.classList.add("show"));
+  const ann=$("announce"); if(ann) ann.textContent="Congratulations!";
+  const rest=$("podRest"); if(rest) rest.hidden=false;
+  const ctl=$("podCtl"); if(ctl) ctl.hidden=false;
+  const skip=$("podSkip"); if(skip) skip.hidden=true;
   for(const p of H.players.values()) send(p,endMsg(p));
-  renderHost(); confetti(); sfx.end();
+}
+function runReveal(list){
+  clearTimers();
+  const ann=$("announce"), slots=[...document.querySelectorAll(".podium .slot")];
+  const at=(ms,fn)=>H.timers.push(setTimeout(fn,ms));
+  const say=txt=>{ ann.textContent=txt; ann.classList.remove("pop"); void ann.offsetWidth; ann.classList.add("pop"); };
+  const words=["And the winner is…","In second place…","In third place…"];
+  let t=900;
+  for(const idx of [2,1,0]){
+    if(!list[idx]) continue;
+    const win=idx===0, slot=slots.find(s=>s.dataset.rank===String(idx+1));
+    at(t,()=>{ say(words[idx]); drumroll(win?2600:1300); });
+    t+= win?2900:1500;
+    at(t,()=>{
+      slot.classList.add("show"); say(list[idx].name+"!");
+      if(win){ slot.classList.add("lit"); confetti(); sfx.end(); } else tone([523,784],0.12,"triangle",0.06);
+    });
+    t+= win?1800:1700;
+  }
+  at(t,finishReveal);
 }
 function tiles(q, reveal){
   const grid=el("div","answers"), ci=q.opts.indexOf(q.c);
@@ -426,7 +641,7 @@ function renderHost(){
   cancelAnimationFrame(H.raf); app.textContent="";
   const st=el("div","stage"); app.append(st);
   const bar=el("div","bar");
-  const deckName=(DECKS.find(d=>d[0]===H.deck)||[,""])[1];
+  const deckName=SETS[H.set].name+" · "+(SETS[H.set].decks.find(d=>d[0]===H.deck)||[,""])[1];
   bar.append(el("span","pill",deckName), el("span","pill num","Code "+H.code));
   if(H.phase==="question"||H.phase==="reveal"||H.phase==="board") bar.append(el("span","pill num",`Question ${H.i+1} of ${H.qs.length}`));
   bar.append(el("span","spacer"));
@@ -483,12 +698,26 @@ function renderHost(){
   }
   if(H.phase==="end"){
     const list=ranked();
-    st.append(el("h2",null,"Final podium"));
+    st.classList.add("finale");
+    const ann=el("div","announce pop","The results are in…"); ann.id="announce"; st.append(ann);
     const pod=el("div","podium");
-    for(const [cls,idx] of [["p2",1],["p1",0],["p3",2]]){ const p=list[idx]; if(!p) continue; const d=el("div",cls); d.append(el("b",null,String(idx+1)), el("span",null,p.name), el("span","num",fmt(p.score))); pod.append(d); }
+    for(const [cls,idx] of [["p2",1],["p1",0],["p3",2]]){
+      const p=list[idx]; if(!p) continue;
+      const m=MASCOT_BY[p.mascot];
+      const slot=el("div","slot "+cls); slot.dataset.rank=String(idx+1);
+      const who=el("div","who"); who.append(el("span","em",m?m.emoji:"⭐"), el("span","nm",m?m.name:p.name), el("span","num sc",fmt(p.score)+" pts"));
+      const block=el("div","block"); block.append(el("b",null,String(idx+1)));
+      slot.append(who,block); pod.append(slot);
+    }
     st.append(pod);
-    if(list.length>3){ const ol=el("ol","board"); list.slice(3,10).forEach((p,i)=>{ const li=el("li"); li.append(el("span","rk num",String(i+4)), el("span","nm",p.name), el("span"), el("span","num",fmt(p.score))); ol.append(li); }); st.append(ol); }
-    const row=el("div","row"); row.append(btn("New game","btn",()=>{ try{ H.peer.destroy(); }catch{} H.players=new Map(); hostSetup(); })); st.append(row);
+    const rest=el("div"); rest.id="podRest"; rest.hidden=true;
+    if(list.length>3){ const ol=el("ol","board"); list.slice(3,10).forEach((p,i)=>{ const li=el("li"); li.append(el("span","rk num",String(i+4)), el("span","nm",p.name), el("span"), el("span","num",fmt(p.score))); ol.append(li); }); rest.append(ol); }
+    st.append(rest);
+    const skip=btn("Skip to results","linkbtn",finishReveal); skip.id="podSkip"; skip.style.alignSelf="center"; st.append(skip);
+    const row=el("div","row"); row.id="podCtl"; row.hidden=true;
+    row.append(btn("New game","btn",()=>{ clearTimers(); try{ H.peer.destroy(); }catch{} H.players=new Map(); hostSetup(); }));
+    st.append(row);
+    if(H.revealed) finishReveal(); else runReveal(list);
   }
 }
 document.addEventListener("keydown",e=>{
@@ -510,7 +739,7 @@ if(!P.key){ P.key=Math.random().toString(36).slice(2)+Date.now().toString(36); s
 function playerCode(err){
   P.phase="code"; app.textContent="";
   const box=el("div","center");
-  const h=el("h1"); h.append("Poster",el("br"),Object.assign(el("span","hl"),{textContent:"Showdown"}));
+  const h=el("h1"); h.append("Showdown",el("br"),Object.assign(el("span","hl"),{textContent:"Live"}));
   box.append(h, el("p",null,"Enter the game code on the big screen."));
   const inp=el("input","big-input"); inp.id="code"; inp.inputMode="numeric"; inp.autocomplete="off"; inp.maxLength=6; inp.placeholder="Game code"; inp.value=P.code;
   const e=el("div","err",err||""); e.setAttribute("role","alert");
@@ -543,7 +772,7 @@ function connect(){
   clearTimeout(joinTimer);
   joinTimer=setTimeout(()=>{ if(P.phase==="connecting"){ playerCode("Couldn't reach that game. Check the code, or ask your teacher if the game is open."); status("",false); } },12000);
   const go=()=>{
-    const conn=P.peer.connect(PREFIX+P.code,{reliable:true});
+    const conn=P.peer.connect(PREFIX+P.code,{reliable:true, serialization:"json"});
     P.conn=conn;
     conn.on("open",()=>{ conn.send({t:"hello",key:P.key}); });
     conn.on("data",onHostMsg);
@@ -563,6 +792,8 @@ function onHostMsg(d){
   if(!d||typeof d!=="object") return;
   clearTimeout(joinTimer);
   status("Connected");
+  if(typeof d.quiz==="string") brand(d.quiz.slice(0,40));
+  if(d.t==="suspense") return playerSuspense();
   if(d.t==="mascots"){
     if(d.ended){ playerCode("That game has ended. Ask your teacher for the new code."); return; }
     if(P.phase==="connecting"||P.phase==="pick") playerPick(Array.isArray(d.taken)?d.taken.map(String):[], P.pendingNote);
@@ -619,6 +850,13 @@ function playerResult(d){
   else { box.append(el("div","verdict no pop", d.answered?"Incorrect":"Time's up")); box.append(el("p","rank","Answer: "+String(d.correct||""))); sfx.wrong(); }
   box.append(el("p","rank",`You're in ${ordinal(Number(d.rank)||0)} place`));
   if(d.behind) box.append(el("p","muted",`${fmt(d.gap)} points behind ${clean(d.behind)}`));
+  app.append(box);
+}
+function playerSuspense(){
+  P.phase="suspense"; cancelAnimationFrame(P.raf); app.textContent="";
+  const box=el("div","pad");
+  const drum=el("div","drum","🥁");
+  box.append(el("p","rank",P.name), drum, el("div","verdict","Drumroll…"), el("p","rank","Eyes on the big screen!"), el("p","muted","Your final place appears here after the podium reveal."));
   app.append(box);
 }
 function playerEnd(d){
