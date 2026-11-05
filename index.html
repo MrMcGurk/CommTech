@@ -93,6 +93,16 @@ select{background:var(--panel);color:var(--text);border:1px solid var(--line);bo
 .podium span{font-size:22px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .podium .p1{background:var(--lime);height:280px}.podium .p2{background:var(--cyan);height:210px}.podium .p3{background:var(--orange);height:160px}
 
+/* mascot picker */
+.mascots{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.masc{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:12px 6px 10px;display:flex;flex-direction:column;align-items:center;gap:4px;transition:transform .12s,border-color .12s}
+.masc .em{font-size:48px;line-height:1.1}
+.masc .nm{font-weight:700;font-size:15px}
+.masc:hover:not([disabled]){transform:translateY(-3px);border-color:var(--lime)}
+.masc[disabled]{opacity:.3;cursor:default}
+.masc.chosen{opacity:1;border-color:var(--lime);background:var(--panel2)}
+.chips span{font-size:24px}
+
 /* player pad */
 .pad{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:14px;text-align:center}
 .pad .who{display:flex;justify-content:space-between;font-weight:700}
@@ -132,7 +142,7 @@ const RAW = [
 ["col","In the 60-30-10 rule, the 60% colour is the…","Dominant colour for backgrounds and big areas",["Accent colour","Text colour only","Texture colour"],"60% dominant, 30% support, 10% accent."],
 ["col","Warm colours (red, orange, yellow) usually suggest…","Energy, action and excitement",["Calm, trust and stability","Sadness and loss","Nothing: colour has no mood"],"Warm = energy. Cool = calm, trust, stability."],
 ["col","Which group are all cool colours?","Blue, green, purple",["Red, orange, yellow","Orange, green, red","Yellow, purple, red"],"Cool colours sit on the blue side of the wheel."],
-["col","Which palette fits The Outsiders' gritty 1960s feel best?","A low-saturation, muted palette",["A neon, high-saturation palette","Pure rainbow colours","Only bright primaries"],"Low saturation feels calm, vintage or serious."],
+["col","Which palette best fits a gritty 1960s story?","A low-saturation, muted palette",["A neon, high-saturation palette","Pure rainbow colours","Only bright primaries"],"Low saturation feels calm, vintage or serious."],
 ["col","High saturation on a poster tends to feel…","Loud: sports, energy, fun",["Calm and vintage","Serious and formal","Faded and old"],"Saturation sets the era: high shouts, low feels calm or vintage."],
 ["col","Name this colour harmony.","Complementary",["Analogous","Monochromatic","Triadic"],"Opposites on the wheel, like blue + orange, give the most punch.",{sw:["#1E88E5","#FF8C00"]}],
 ["col","Name this colour harmony.","Analogous",["Complementary","Triadic","Split-complementary"],"Neighbours on the wheel feel harmonious and natural.",{sw:["#1E88E5","#00897B","#43A047"]}],
@@ -143,21 +153,17 @@ const RAW = [
 ["col","What contrast ratio do big headlines need?","3:1",["1:1","4.5:1","21:1"],"Large type can get away with 3:1. Small text needs 4.5:1."],
 ["col","Would this headline pass the greyscale test?","No: it disappears in black and white",["Yes: red and green are opposites","Yes: any two colours pass","Only if it's printed bigger"],"Red on green looks different in colour but nearly the same in greyscale (about 1.6:1). Fail.",{pair:["#43A047","#E53935"]}],
 ["col","Would this headline pass the greyscale test?","Yes: it stays clear in black and white",["No: navy is too dark","No: white text always fails","Only on screens"],"White on navy is about 14:1. Easy pass.",{pair:["#1F2A44","#FFFFFF"]}],
-["col","Your text gets lost over a busy part of your photo. Which is NOT a recommended fix?","Add a second texture on top",["Put a darker or lighter box behind it","Move the text to a calmer area","Darken that part of the photo"],"More texture makes it worse. Box it, move it, or darken behind it."],
-["col","How many colours should you keep when building a palette from your photo?","3–5, plus black or white",["Just 1","10–12","Every colour Adobe Color finds"],"Extract → Reduce → Check → Record."],
-["col","On color.adobe.com, which feature pulls a palette from your photo?","Extract Theme",["Colour Roulette","Magic Wand","Content-Aware Fill"],"Upload your photo and try the Colorful, Muted and Deep moods."],
+["col","Text gets lost over a busy part of a photo. Which is NOT a recommended fix?","Add a second texture on top",["Put a darker or lighter box behind it","Move the text to a calmer area","Darken that part of the photo"],"More texture makes it worse. Box it, move it, or darken behind it."],
+["col","How many colours should a poster palette usually have?","3–5, plus black or white",["Just 1","10–12","Every colour Adobe Color finds"],"A few colours chosen on purpose look stronger than many."],
 ["col","Blend mode Multiply…","Keeps the darks and drops the whites",["Keeps the lights and drops the darks","Inverts every colour","Deletes the layer underneath"],"Great for grungy, dirty textures."],
 ["col","Which blend mode keeps the lights and drops the darks, good for dust and light leaks?","Screen",["Multiply","Normal","Dissolve"],"Screen is the opposite of Multiply."],
 ["col","Overlay and Soft Light give you…","A subtle, all-over texture",["A solid colour block","Only the darkest pixels","A 3D bevel"],"They blend into both the lights and the darks."],
 ["col","What opacity should you start with for a texture layer?","Around 20–40%",["100%","80–90%","1%"],"Subtle wins. Lower it until you notice the texture only when you look for it."],
-["col","How many textures should your poster use?","One",["Three","Five","As many as fit"],"One texture, not five. Pick the one that fits your mood."],
+["col","How many textures should one poster use?","One",["Three","Five","As many as fit"],"One texture, not five. Pick the one that fits your mood."],
 ["col","On a layer mask, painting BLACK…","Hides the texture",["Shows the texture","Turns the texture black","Locks the layer"],"Black hides, white shows. Paint black over faces to keep them clean."],
-["col","In Photoshop, how do you make a clipping mask?","Alt-click (Option on Mac) the line between the two layers",["Double-click the eye icon","Press Ctrl+Z","Drag the layer to the trash"],"Put the texture right above the text or shape first."],
-["col","What's the Illustrator shortcut for Clipping Mask → Make?","Ctrl/Cmd + 7",["Ctrl/Cmd + T","Ctrl/Cmd + S","Ctrl/Cmd + 0"],"Texture above the text, select both, Ctrl/Cmd + 7."],
 ["col","Why desaturate a texture before using it?","So it won't change your palette",["To make it load faster","Colour textures aren't allowed","So it prints larger"],"Adjustments › Desaturate turns it black and white."],
-["col","Which texture best fits a vintage, gritty Outsiders poster?","Paper, grain, scratches or worn print",["Halftone comic dots","Soft watercolour","Glossy chrome"],"Halftone = retro comic. Concrete = urban. Canvas = soft and handmade."],
-["col","Halftone dots make a poster feel…","Retro comic or newspaper",["Soft and handmade","Tough and industrial","Futuristic"],"halftone.png is in the class Textures folder."],
-["col","In Photoshop, how do you bring a texture file into your poster?","File → Place Embedded",["Edit → Undo","Image → Crop","Select → All"],"Then stretch it, put it above, change the blend mode and lower the opacity."],
+["col","Which texture best fits a vintage, gritty poster?","Paper, grain, scratches or worn print",["Halftone comic dots","Soft watercolour","Glossy chrome"],"Halftone = retro comic. Concrete = urban. Canvas = soft and handmade."],
+["col","Halftone dots make a poster feel…","Retro comic or newspaper",["Soft and handmade","Tough and industrial","Futuristic"],"Great for a pop-art or printed look."],
 
 ["type","“Helvetica” is a typeface. “Helvetica Bold Italic” is a…","Font",["Typeface","Glyph family","Kerning pair"],"A typeface is the family. A font is one style in that family."],
 ["type","Typography is the art of arranging type to make language…","Legible, readable and appealing",["Longer and more detailed","Colourful and shiny","Hidden and mysterious"],"It includes choosing fonts, adjusting them and laying out text."],
@@ -188,7 +194,6 @@ const RAW = [
 ["type","What makes a STRONG font pairing?","They share something but contrast clearly",["They look almost exactly the same","They're both decorative scripts","They're picked at random"],"Avoid two fonts that look almost the same."],
 ["type","“FUNERAL SERVICE” in a goofy, playful font feels wrong because…","The typeface doesn't match the message",["The words are misspelled","It's too big","It's the wrong colour"],"Look at the font before you read the words."],
 ["type","Repeating fonts, colours and shapes makes a design feel…","Unified",["Boring no matter what","Random","Unreadable"],"Repeat to unify; vary size or shade so it doesn't get boring."],
-["type","The Outsiders is set in…","1960s Tulsa, Oklahoma",["1920s Chicago","1990s Toronto","1800s London"],"Look at 1960s movie posters, paperback covers and drive-in signs."],
 
 ["hist","A poster has one job in three parts. Which is NOT one of them?","Show every detail about the event",["Grab attention","Deliver one clear message","Tell people what to do next"],"Don't try to show everything."],
 ["hist","The 3-second test asks…","Can a viewer tell what the poster is for in 3 seconds?",["Can you design it in 3 seconds?","Does it use 3 colours?","Can it be printed 3 times?"],"Posters are seen in passing."],
@@ -217,22 +222,6 @@ const RAW = [
 ["hist","On a poster, blue usually means…","Calm, trust",["Urgency, passion","Danger","Nostalgia"],"Deep red = urgency, passion. Muted tones = nostalgia, restraint."],
 ["hist","Great posters help viewers…","Imagine themselves in the experience",["Read for a long time","Ignore the details","Guess the date"],"Ask: what should someone feel when they see your poster?"],
 
-["ai","Which is NOT one of the six parts of a strong prompt?","Price",["Subject","Mood","Composition"],"Subject, style, mood, colour, composition, text."],
-["ai","How should you write the exact words you want on an AI poster?","In quotation marks",["In all lowercase","Leave them out","In a separate email"],"Example: headline text ‘YOUR MOVE’ at the top."],
-["ai","Vague prompt = …","Generic result",["Perfect result","No result","Better result"],"AI fills every gap you leave with the most average guess."],
-["ai","Why does your research matter for prompting?","It makes your prompt specific",["It makes the AI slower","AI doesn't need it","Flint grades it"],"AI doesn't read your mind."],
-["ai","When revising an AI poster, change…","One or two things at a time",["Everything at once","Nothing: restart each time","Only the file name"],"Revise, don't restart: Look, Tweak, Specify, Save."],
-["ai","Which feedback is most useful for revising a prompt?","“Make the title larger and centred”",["“Make it better”","“Fix it”","“Do something cool”"],"Be specific."],
-["ai","Which is NOT a common AI image flaw?","Always getting the dates right",["Misspelled or invented text","Strange hands and faces","Stereotypes and inaccurate history"],"Check every image for these before you use it."],
-["ai","In a prompt, “composition” means…","What is biggest, where things sit, and orientation",["The music playing","The price of the poster","Who wrote the prompt"],"One of the six parts."],
-["ai","Which AI tool did we use to generate our posters?","Flint",["Photoshop","Adobe Color","Excel"],"Saved as AI_v1, AI_v2 and AI_v3."],
-["ai","“The instructions you give an AI tool” is called…","Prompt engineering",["Iteration","Kerning","Plakatstil"],"Use this term in your reflection."],
-["ai","“A new version made by revising the last one” is called…","Iteration",["Prompt engineering","Hierarchy","Tracking"],"AI_v1 → AI_v2 → AI_v3."],
-["ai","Prompt A was just “a poster for a chess club.” What did it make?","A generic, cluttered flyer with placeholder text",["A bold, minimalist knight poster","A perfect poster first try","Nothing at all"],"Prompt B's six-part detail made the bold YOUR MOVE knight poster."],
-["ai","Can your original poster (Part 2) use AI-generated images?","No: it must use your own photo",["Yes, any AI image","Only images from Flint","Only for the background"],"Your own photo, no AI images."],
-["ai","“Style” in a prompt could be…","Photographic, illustrated, retro or minimal",["The date and time","The school's address","Your teacher's name"],"Style is how it looks."],
-["ai","What goes in your AI Prompt Log?","Every prompt and every change, with why you changed it",["Only your final poster","Nothing","Only your first prompt"],"You submit all versions, the prompt for each, and why."],
-["ai","An AI poster shows the date “February 30.” That's an example of…","Wrong dates, times and details",["Good hierarchy","Strong contrast","A call to action"],"Always proofread AI output."],
 
 ["talk","The first thing your eye goes to on a poster is the…","Focal point",["Call to action","Grid","Leading"],"One strong focal point."],
 ["talk","“What you want the viewer to do” is the…","Call to action (CTA)",["Concept","Audience","Thumbnail"],"Start it with a verb."],
@@ -241,20 +230,22 @@ const RAW = [
 ["talk","The 5 W's are…","Who, what, when, where, why",["Width, weight, white, wide, wrap","Where, when, which, what, wow","Who, why, wait, watch, win"],"Clear details, grouped together."],
 ["talk","The order in which a viewer sees information is called…","Visual hierarchy",["Alignment","Tracking","Iteration"],"Create it with size, weight, style and colour."],
 ["talk","Reading order often follows which patterns?","Z- or F-pattern",["X- or Y-pattern","O- or Q-pattern","Spiral only"],"1st, 2nd, 3rd."],
-["talk","A small, quick sketch of a layout idea is a…","Thumbnail",["Swatch","Prompt","Mask"],"You sketched 3 of these."],
+["talk","A small, quick sketch of a layout idea is a…","Thumbnail",["Swatch","Prompt","Mask"],"Quick thumbnails let you try many layouts fast."],
 ["talk","Strong differences like big/small or light/dark are called…","Contrast",["Alignment","Repetition","Leading"],"Contrast makes things stand out."],
 ["talk","Empty space that gives elements room to breathe is…","White space (negative space)",["Wasted space","Bleed","Kerning"],"It doesn't have to be white."],
 ["talk","Invisible lines that organize a layout make a…","Grid",["Mask","Swatch","Filter"],"Use a grid with a clear focal point."],
 ["talk","Lining elements up so the design feels organized is…","Alignment",["Saturation","Iteration","Tracking"],"Pick a system and stick to it."],
-["talk","At the gallery walk, each poster gets…","Two glows and one grow",["Three grows","A letter grade","One glow only"],"Glow = something that works. Grow = one specific suggestion."],
-["talk","What size is the final poster?","11×14 portrait, 300 ppi",["8.5×11 landscape, 72 ppi","Phone wallpaper size","24×36, 10 ppi"],"From the Part 2 requirements."],
-["talk","How long is the final reflection?","200–500 words",["50 words","1,000–2,000 words","One sentence"],"Compare your AI poster with your real one, using design vocabulary."],
-["talk","How should your final files be named?","LastName_FirstName_Poster_[item]",["poster_final_FINAL2","Untitled-1","Anything you like"],"From the submission checklist."],
-["talk","Your working file should be saved as…","An .ai or .psd with named layers",["A screenshot","A .txt file","Only a PNG"],"Plus a PNG export of the final poster."],
-["talk","Your poster must include a headline, what, when, where and…","A call to action",["A QR code","Five fonts","An AI image"],"Plus 2–3 typefaces and a 3–5 colour palette."],
 ];
 const Q = RAW.map(([d,q,c,w,why,v]) => ({d,q,c,w,why,v}));
-const DECKS = [["mix","Mixed Mayhem (all decks)"],["col","Colour & Texture"],["type","Type Talks"],["hist","Stop. Look. Act."],["ai","Talking to the Machine"],["talk","Talk Like a Designer"]];
+const DECKS = [["mix","Mixed Mayhem (all decks)"],["col","Colour & Texture"],["type","Type Talks"],["hist","Stop. Look. Act."],["talk","Talk Like a Designer"]];
+// Teams pick a mascot instead of typing a name, so nothing inappropriate can appear on screen.
+const MASCOTS = [
+  ["panda","🐼","Panda"],["fox","🦊","Fox"],["koala","🐨","Koala"],["bunny","🐰","Bunny"],["penguin","🐧","Penguin"],["otter","🦦","Otter"],
+  ["hamster","🐹","Hamster"],["kitten","🐱","Kitten"],["puppy","🐶","Puppy"],["sloth","🦥","Sloth"],["frog","🐸","Frog"],["bear","🐻","Bear"],
+  ["chick","🐥","Chick"],["hedgehog","🦔","Hedgehog"],["octopus","🐙","Octopus"],["turtle","🐢","Turtle"],["owl","🦉","Owl"],["whale","🐳","Whale"],
+  ["seal","🦭","Seal"],["dolphin","🐬","Dolphin"],["bee","🐝","Bee"],["chipmunk","🐿️","Chipmunk"],["ladybug","🐞","Ladybug"],["lamb","🐑","Lamb"]
+];
+const MASCOT_BY = Object.fromEntries(MASCOTS.map(([id,e,n])=>[id,{id,emoji:e,name:n,label:e+" "+n}]));
 const SHAPES = ["▲","◆","●","■"];
 const PREFIX = "tgj3m-poster-showdown-";
 
@@ -308,7 +299,7 @@ function hostSetup(){
   const opts=el("div","opts");
   const mk=(id,label,list,val)=>{ const l=el("label"); l.append(el("span","label",label)); const s=el("select"); s.id=id; for(const [v,t] of list){ const o=el("option",null,t); o.value=v; s.append(o);} s.value=String(val); l.append(s); return l; };
   opts.append(mk("hDeck","Deck",DECKS,"mix"), mk("hN","Questions",[[10,"10"],[15,"15"],[20,"20"]],10), mk("hT","Seconds per question",[[10,"10"],[20,"20"],[30,"30"]],20));
-  box.append(opts, el("p",null,"Students join on their own devices with a game code and a team name. Faster correct answers earn more points."));
+  box.append(opts, el("p",null,"Students join on their own devices with a game code and pick an animal mascot for their team. Faster correct answers earn more points."));
   const row=el("div","row"); row.append(btn("Create game","btn",createGame), btn("Back","btn ghost",landing)); box.append(row);
   app.append(box);
 }
@@ -332,26 +323,41 @@ function createGame(){
   window.addEventListener("beforeunload",e=>{ if(H.phase!=="setup"&&H.phase!=="end"){ e.preventDefault(); e.returnValue=""; } });
 }
 function send(p,msg){ if(p.conn && p.online){ try{ p.conn.send(msg); }catch{} } }
+H.conns = new Set();
+const takenList = () => [...H.players.values()].map(p=>p.mascot);
+function sendMascots(conn){ try{ conn.send({t:"mascots", taken:takenList(), ended:H.phase==="end"}); }catch{} }
+function broadcastMascots(){ for(const c of H.conns) if(![...H.players.values()].some(p=>p.conn===c)) sendMascots(c); }
 function hostConn(conn){
+  H.conns.add(conn);
   conn.on("data",d=>{
     if(!d||typeof d!=="object") return;
+    if(d.t==="hello") return hostHello(conn,d);
     if(d.t==="join") return hostJoin(conn,d);
     const p=[...H.players.values()].find(x=>x.conn===conn); if(!p) return;
     if(d.t==="ans") hostAnswer(p,d);
   });
-  conn.on("close",()=>{ for(const p of H.players.values()) if(p.conn===conn){ p.online=false; } if(H.phase==="lobby") renderHost(); });
+  conn.on("close",()=>{ H.conns.delete(conn); for(const p of H.players.values()) if(p.conn===conn){ p.online=false; } if(H.phase==="lobby") renderHost(); });
+}
+// A device that already picked a mascot in this game rejoins automatically.
+function hostHello(conn,d){
+  const key=String(d.key||"").slice(0,40), p=H.players.get(key);
+  if(p) return attach(p,conn);
+  sendMascots(conn);
 }
 function hostJoin(conn,d){
-  const name=clean(d.name), key=String(d.key||"").slice(0,40);
-  if(name.length<2){ try{ conn.send({t:"bad-name",msg:"Team name needs at least 2 letters."}); }catch{} return; }
+  const key=String(d.key||"").slice(0,40), m=MASCOT_BY[d.mascot];
   let p=H.players.get(key);
-  const taken=[...H.players.values()].find(x=>x.name.toLowerCase()===name.toLowerCase() && x.key!==key);
-  if(taken){ try{ conn.send({t:"bad-name",msg:"That team name is taken. Try another."}); }catch{} return; }
-  if(!p){
-    if(H.phase==="end"){ try{ conn.send({t:"bad-name",msg:"This game has ended."}); }catch{} return; }
-    p={key,name,conn,online:true,score:0,streak:0,last:null,delta:0,answers:{}}; H.players.set(key,p); sfx.join();
-  } else { p.conn=conn; p.online=true; p.name=name; }
-  send(p,{t:"welcome",name:p.name,score:p.score});
+  if(p) return attach(p,conn);
+  if(H.phase==="end"){ sendMascots(conn); return; }
+  if(!m || takenList().includes(m.id)){ try{ conn.send({t:"taken"}); }catch{} sendMascots(conn); return; }
+  p={key, mascot:m.id, name:m.label, conn, online:true, score:0, streak:0, last:null, delta:0, answers:{}};
+  H.players.set(key,p); sfx.join();
+  attach(p,conn);
+  broadcastMascots();
+}
+function attach(p,conn){
+  p.conn=conn; p.online=true;
+  send(p,{t:"welcome",name:p.name,mascot:p.mascot,score:p.score});
   if(H.phase==="question"){ const q=H.qs[H.i]; if(!p.answers[H.i]) send(p,qMsg(q)); else send(p,{t:"locked"}); }
   else if(H.phase==="end") send(p,endMsg(p));
   if(H.phase==="lobby") renderHost(); else updateAnswered();
@@ -498,7 +504,7 @@ document.addEventListener("keydown",e=>{
 // =====================================================================
 // PLAYER (student device)
 // =====================================================================
-const P = { peer:null, conn:null, code:"", name:store.get("psl-name",""), key:store.get("psl-key",""), score:0, q:null, phase:"code", t0:0, raf:0 };
+const P = { peer:null, conn:null, code:"", name:"", mascot:"", key:store.get("psl-key",""), score:0, q:null, phase:"code", t0:0, raf:0 };
 if(!P.key){ P.key=Math.random().toString(36).slice(2)+Date.now().toString(36); store.set("psl-key",P.key); }
 
 function playerCode(err){
@@ -508,32 +514,38 @@ function playerCode(err){
   box.append(h, el("p",null,"Enter the game code on the big screen."));
   const inp=el("input","big-input"); inp.id="code"; inp.inputMode="numeric"; inp.autocomplete="off"; inp.maxLength=6; inp.placeholder="Game code"; inp.value=P.code;
   const e=el("div","err",err||""); e.setAttribute("role","alert");
-  const go=btn("Enter","btn",()=>{ const c=inp.value.replace(/\D/g,""); if(c.length!==6){ e.textContent="The code is 6 digits."; inp.focus(); return; } P.code=c; playerName(); });
+  const go=btn("Enter","btn",()=>{ const c=inp.value.replace(/\D/g,""); if(c.length!==6){ e.textContent="The code is 6 digits."; inp.focus(); return; } P.code=c; go.disabled=true; go.textContent="Connecting…"; P.phase="connecting"; connect(); });
   inp.addEventListener("keydown",ev=>{ if(ev.key==="Enter") go.click(); });
   box.append(inp,e,go, btn("I'm the teacher: host a game","linkbtn",hostSetup));
   app.append(box); inp.focus();
 }
-function playerName(err){
-  P.phase="name"; app.textContent="";
-  const box=el("div","center");
-  box.append(el("div","label","Game "+P.code), el("h2",null,"Pick a team name"), el("p",null,"It shows on the big screen. Keep it school-appropriate."));
-  const inp=el("input","big-input"); inp.id="team"; inp.maxLength=20; inp.autocomplete="off"; inp.placeholder="Team name"; inp.value=P.name; inp.style.letterSpacing="0";
-  const e=el("div","err",err||""); e.setAttribute("role","alert");
-  const go=btn("Join game","btn",()=>{ const n=clean(inp.value); if(n.length<2){ e.textContent="Type at least 2 letters."; inp.focus(); return; } P.name=n; store.set("psl-name",n); go.disabled=true; go.textContent="Joining…"; connect(); });
-  inp.addEventListener("keydown",ev=>{ if(ev.key==="Enter") go.click(); });
-  box.append(inp,e,go, btn("Wrong code? Go back","linkbtn",()=>playerCode()));
-  app.append(box); inp.focus();
+function playerPick(taken, note){
+  P.phase="pick"; app.textContent="";
+  const box=el("div","center"); box.style.maxWidth="760px";
+  box.append(el("div","label","Game "+P.code), el("h2",null,"Pick your mascot"), el("p",null,"Your team plays as this animal. Grey ones are already taken."));
+  if(note){ const n=el("div","err",note); n.setAttribute("role","alert"); box.append(n); }
+  const grid=el("div","mascots");
+  for(const [id,emoji,name] of MASCOTS){
+    const isTaken=taken.includes(id);
+    const b=btn(null,"masc",()=>{ grid.querySelectorAll("button").forEach(x=>x.disabled=true); b.classList.add("chosen"); try{ P.conn.send({t:"join",mascot:id,key:P.key}); }catch{} });
+    b.append(el("span","em",emoji), el("span","nm",isTaken?"Taken":name));
+    b.setAttribute("aria-label", name+(isTaken?" (taken)":""));
+    if(isTaken) b.disabled=true;
+    grid.append(b);
+  }
+  box.append(grid, btn("Wrong code? Go back","linkbtn",()=>{ try{ P.conn&&P.conn.close(); }catch{} P.conn=null; playerCode(); }));
+  app.append(box);
 }
 let joinTimer=0;
 function connect(){
   if(!peerReady()) return;
   status("Connecting…");
   clearTimeout(joinTimer);
-  joinTimer=setTimeout(()=>{ if(P.phase==="name"){ playerName("Couldn't reach that game. Check the code, or ask your teacher if the game is open."); status("",false); } },12000);
+  joinTimer=setTimeout(()=>{ if(P.phase==="connecting"){ playerCode("Couldn't reach that game. Check the code, or ask your teacher if the game is open."); status("",false); } },12000);
   const go=()=>{
     const conn=P.peer.connect(PREFIX+P.code,{reliable:true});
     P.conn=conn;
-    conn.on("open",()=>{ conn.send({t:"join",name:P.name,key:P.key}); });
+    conn.on("open",()=>{ conn.send({t:"hello",key:P.key}); });
     conn.on("data",onHostMsg);
     conn.on("close",()=>{ if(P.phase!=="end"){ status("Lost connection. Reconnecting…",true); setTimeout(()=>{ if(P.conn===conn) go(); },1500); } });
   };
@@ -543,16 +555,24 @@ function connect(){
   P.peer.on("open",go);
   P.peer.on("disconnected",()=>{ try{ P.peer.reconnect(); }catch{} });
   P.peer.on("error",e=>{
-    if(e.type==="peer-unavailable"){ clearTimeout(joinTimer); if(P.phase==="name"||P.phase==="code") playerName("No game with that code is open. Check the code on the big screen."); else status("The game isn't reachable right now. Retrying…",true); status("",false); return; }
+    if(e.type==="peer-unavailable"){ clearTimeout(joinTimer); if(P.phase==="connecting"||P.phase==="code"){ status("",false); playerCode("No game with that code is open. Check the code on the big screen."); } else status("The game isn't reachable right now. Retrying…",true); return; }
     status("Connection problem: "+(e.type||"unknown"),true);
   });
 }
 function onHostMsg(d){
   if(!d||typeof d!=="object") return;
   clearTimeout(joinTimer);
-  if(d.t==="bad-name") return playerName(String(d.msg||"Try another team name."));
   status("Connected");
-  if(d.t==="welcome"){ P.name=clean(d.name); P.score=Number(d.score)||0; if(P.phase==="name"||P.phase==="code") playerWait(); return; }
+  if(d.t==="mascots"){
+    if(d.ended){ playerCode("That game has ended. Ask your teacher for the new code."); return; }
+    if(P.phase==="connecting"||P.phase==="pick") playerPick(Array.isArray(d.taken)?d.taken.map(String):[], P.pendingNote);
+    P.pendingNote=""; return;
+  }
+  if(d.t==="taken"){ P.pendingNote="Another team just grabbed that one. Pick a different animal."; return; }
+  if(d.t==="welcome"){
+    const m=MASCOT_BY[d.mascot]; P.mascot=m?m.id:""; P.name=m?m.label:"Your team"; P.score=Number(d.score)||0;
+    if(P.phase==="connecting"||P.phase==="pick"||P.phase==="code") playerWait(); return;
+  }
   if(d.t==="q") return playerQuestion(d);
   if(d.t==="locked") return playerLocked();
   if(d.t==="result") return playerResult(d);
@@ -562,7 +582,9 @@ function header(){ const w=el("div","who"); w.append(el("span",null,P.name), el(
 function playerWait(){
   P.phase="wait"; app.textContent="";
   const box=el("div","pad");
-  box.append(header(), el("div","verdict ok pop","You're in!"), el("p","rank","Look for “"+P.name+"” on the big screen."), el("p","muted","The game starts when your teacher hits Start."));
+  const m=MASCOT_BY[P.mascot];
+  const big=el("div","pop",m?m.emoji:""); big.style.cssText="font-size:clamp(110px,30vw,180px);line-height:1.1";
+  box.append(header(), big, el("div","verdict ok pop","You're in!"), el("p","rank","You're Team "+(m?m.name:"")+". Look for your mascot on the big screen."), el("p","muted","The game starts when your teacher hits Start."));
   app.append(box);
 }
 function playerQuestion(d){
