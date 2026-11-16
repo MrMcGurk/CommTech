@@ -73,6 +73,17 @@ select{background:var(--panel);color:var(--text);border:1px solid var(--line);bo
 .ans .fill{position:absolute;left:0;bottom:0;height:10px;background:rgba(18,16,25,.55)}
 .a0{background:var(--lime)}.a1{background:var(--violet)}.a2{background:var(--orange)}.a3{background:var(--cyan)}
 .ans.dim{opacity:.25}
+.answers.flags{grid-template-columns:repeat(3,minmax(0,1fr))}
+.answers.flags .ans{flex-direction:column;justify-content:center;text-align:center;min-height:clamp(140px,22vh,240px);gap:6px}
+.answers.flags .sh{font-size:clamp(40px,6vw,64px);width:auto}
+.ans .fl{display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.ans .fl b{font-family:var(--display);font-size:clamp(28px,4vw,52px);letter-spacing:.03em;text-transform:uppercase}
+.ans .fl small{font-size:clamp(14px,1.6vw,20px);font-weight:700;opacity:.8}
+.ans.flag-g{background:#3ddc6a}.ans.flag-y{background:#ffd23f}.ans.flag-r{background:#ff4d5e}
+.why.flag-g{border-left-color:#3ddc6a}.why.flag-y{border-left-color:#ffd23f}.why.flag-r{border-left-color:#ff4d5e}
+.why ul{margin:8px 0 0;padding-left:22px}
+.pad .answers.flags{grid-template-columns:1fr}
+.pad .answers.flags .ans{min-height:clamp(96px,17vh,150px);flex-direction:row;gap:14px}
 .ans.right{outline:5px solid var(--good);outline-offset:3px}
 .why{background:var(--panel2);border-left:5px solid var(--good);border-radius:6px;padding:14px 16px;font-size:20px;margin:0}
 .vis{display:flex;justify-content:center;max-width:100%}
@@ -415,13 +426,43 @@ const LOGO_RAW = [
 ["proc","Why keep every version of a design (v1, v2, v3)?","It's evidence of your design process",["To fill up the drive","Because old versions are always better","So you can delete them later"],"Saved versions show how you tested and refined."],
 ];
 
+// Photography: Consent & Privacy. Every card is answered Green, Yellow or Red. [deck, scenario, flag, [other flags], why]
+const FLAGS = ["Green","Yellow","Red"];
+const flagRow = (d,q,c,why) => [d,q,c,FLAGS.filter(x=>x!==c),why];
+const PHOTO_RAW = [
+flagRow("cards","You take a close-up of your friend's new shoes. No face is in the photo.","Green","No one can be identified. Asking anyway is a nice habit."),
+flagRow("cards","A classmate is asleep in the library, and it would make a funny photo.","Red","They can't say yes, and it could embarrass them."),
+flagRow("cards","You take a wide shot of the crowd at a school basketball game. Nobody is the main focus.","Yellow","Fine for your folder, but check with Mr. McGurk before posting: some students can't appear in photos."),
+flagRow("cards","Your friend said yes to a portrait last week. Today they ask you to delete it. Can you keep it?","Red","Delete it and show them. Consent can be taken back at any time."),
+flagRow("cards","You photograph a friend's phone screen while they're texting.","Red","Messages are private information."),
+flagRow("cards","A teacher walks through the background of your hallway photo.","Yellow","Ask, or reframe so they aren't identifiable."),
+flagRow("cards","A stranger's dog at the park would be perfect for your booklet. The owner is nearby.","Yellow","Ask the owner first."),
+flagRow("cards","You find an amazing photo on Google and want to use it in your Composition Booklet.","Red","It isn't your photo. Projects use your own work only."),
+flagRow("cards","You photograph the outside of the school building.","Green","A building in a public place, with no people as the focus."),
+flagRow("cards","A classmate trips in the hallway, you catch it on camera, and you want to post it to your story.","Red","Never post someone to embarrass them, even as a joke."),
+flagRow("cards","You want your younger brother in your holiday postcard, and your parent says yes.","Green","A parent gave permission for a child. Still ask your brother too."),
+flagRow("cards","Through an open classroom door, you see a great shot of a class writing a test.","Red","Never shoot into a classroom that's in session.")
+];
+const FLAG_INFO = { Green:["flag-g","Go ahead"], Yellow:["flag-y","Ask first / it depends"], Red:["flag-r","Don't"] };
+const isFlags = opts => Array.isArray(opts) && opts.length===3 && opts.every((o,i)=>o===FLAGS[i]);
+// Answer tile contents: a coloured flag with its meaning for Green/Yellow/Red sets, the usual shape otherwise.
+function tileFace(t, opts, i){
+  if(isFlags(opts)){ const [cls,meaning]=FLAG_INFO[opts[i]]; t.classList.add(cls); const fl=el("span","fl"); fl.append(el("b",null,opts[i]), el("small",null,meaning)); t.append(el("span","sh","⚑"), fl); }
+  else t.append(el("span","sh",SHAPES[i]), el("span",null,String(opts[i])));
+}
+
 const toQ = raw => raw.map(([d,q,c,w,why,v]) => ({d,q,c,w,why,v}));
 // Each class gets its own quiz set; the host picks one on the setup screen.
 const SETS = {
   poster: { name:"Poster Showdown", tag:"TGJ3M · Poster Project", Q:toQ(RAW),
     decks:[["mix","Mixed Mayhem (all decks)"],["col","Colour & Texture"],["type","Type Talks"],["hist","Stop. Look. Act."],["talk","Talk Like a Designer"]] },
   logo: { name:"Logo Challenge", tag:"TGJ20 · Logo Design", Q:toQ(LOGO_RAW),
-    decks:[["mix","Mixed Mayhem (all decks)"],["basics","Logo Basics"],["lcol","Colour Theory"],["illy","Illustrator Tools"],["ltype","Type & Hierarchy"],["proc","Design Process"]] }
+    decks:[["mix","Mixed Mayhem (all decks)"],["basics","Logo Basics"],["lcol","Colour Theory"],["illy","Illustrator Tools"],["ltype","Type & Hierarchy"],["proc","Design Process"]] },
+  photo: { name:"Consent & Privacy", tag:"Photography · Green, Yellow, Red", Q:toQ(PHOTO_RAW), flags:true,
+    decks:[["mix","All 12 scenario cards"]],
+    counts:[[12,"All 12"],[8,"8"],[6,"6"]], times:[[20,"20"],[30,"30"],[45,"45"],[60,"60"]], time:30,
+    blurb:"Each team picks a flag: Green (go ahead), Yellow (ask first, or it depends) or Red (don't). Then reveal the answer and talk about why.",
+    debrief:["Which card did your team argue about most?","What turns a Yellow into a Green?"] }
 };
 // Teams pick a mascot instead of typing a name, so nothing inappropriate can appear on screen.
 const MASCOTS = [
@@ -629,6 +670,7 @@ function confetti(){
 // mimic the small part of the PeerJS API the game uses.
 // Database layout:  peers/{id} = presence   inbox/{id}/{msg} = messages to id
 // =====================================================================
+const VERSION = "Version 3";
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyDgxO5mImSF9o12losfbdnFKoKNJ1sGw0g",
   authDomain: "trivia-fec54.firebaseapp.com",
@@ -736,7 +778,7 @@ function brand(name){ $("brandName").textContent = (name||"Showdown").toUpperCas
 function hostSetup(){
   H.phase="setup"; app.textContent="";
   const box=el("div","center"); box.style.maxWidth="720px";
-  box.append(el("div","label","Teacher · put this on the projector"), el("h2",null,"Host a live game"));
+  box.append(el("div","label","Teacher · put this on the projector · "+VERSION), el("h2",null,"Host a live game"));
   const sets=el("div","setpick");
   for(const [k,s] of Object.entries(SETS)){
     const b=btn(null,"setbtn",()=>{ H.set=k; store.set("psl-set",k); hostSetup(); });
@@ -748,7 +790,8 @@ function hostSetup(){
   const set=SETS[H.set]; brand(set.name);
   const opts=el("div","opts");
   const mk=(id,label,list,val)=>{ const l=el("label"); l.append(el("span","label",label)); const s=el("select"); s.id=id; for(const [v,t] of list){ const o=el("option",null,t); o.value=v; s.append(o);} s.value=String(val); l.append(s); return l; };
-  opts.append(mk("hDeck","Deck",set.decks,"mix"), mk("hN","Questions",[[10,"10"],[15,"15"],[20,"20"]],10), mk("hT","Seconds per question",[[10,"10"],[20,"20"],[30,"30"]],20));
+  opts.append(mk("hDeck","Deck",set.decks,"mix"), mk("hN","Questions",set.counts||[[10,"10"],[15,"15"],[20,"20"]],set.counts?set.counts[0][0]:10), mk("hT","Seconds per question",set.times||[[10,"10"],[20,"20"],[30,"30"]],set.time||20));
+  if(set.blurb) box.append(el("p","why",set.blurb));
   box.append(opts, el("p",null,"Students join on their own devices with a game code and pick an animal mascot for their team. Faster correct answers earn more points."));
   const row=el("div","row"); row.append(btn("Create game","btn",createGame), btn("Back","btn ghost",landing)); box.append(row);
   app.append(box);
@@ -757,7 +800,7 @@ function createGame(){
   if(!peerReady()) return;
   H.deck=$("hDeck").value; H.secs=+$("hT").value;
   const pool=SETS[H.set].Q.filter(q=>H.deck==="mix"||q.d===H.deck);
-  H.qs=shuffle(pool).slice(0,+$("hN").value).map(q=>({...q, opts: q.w.length===1?["True","False"]:shuffle([q.c,...q.w])}));
+  H.qs=shuffle(pool).slice(0,+$("hN").value).map(q=>({...q, opts: SETS[H.set].flags?FLAGS.slice():q.w.length===1?["True","False"]:shuffle([q.c,...q.w])}));
   H.code=String(Math.floor(100000+Math.random()*900000));
   status("Creating game…");
   if(H.peer) try{ H.peer.destroy(); }catch{}
@@ -852,7 +895,7 @@ function hostReveal(){
   for(const p of H.players.values()){
     if(!p.answers[H.i]){ p.streak=0; p.delta=0; }
     const rank=list.indexOf(p)+1, ahead=rank>1?list[rank-2]:null;
-    send(p,{t:"result", ok:!!(p.last&&p.last.ok), answered:!!p.last, pts:p.delta, score:p.score, streak:p.streak, rank, total:list.length, correct:q.c, behind: ahead?ahead.name:null, gap: ahead?ahead.score-p.score:0});
+    send(p,{t:"result", ok:!!(p.last&&p.last.ok), answered:!!p.last, pts:p.delta, score:p.score, streak:p.streak, rank, total:list.length, correct:q.c, why:q.why||"", behind: ahead?ahead.name:null, gap: ahead?ahead.score-p.score:0});
   }
   sfx.buzz(); renderHost();
 }
@@ -895,11 +938,11 @@ function runReveal(list){
   at(t,finishReveal);
 }
 function tiles(q, reveal){
-  const grid=el("div","answers"), ci=q.opts.indexOf(q.c);
+  const grid=el("div","answers"+(isFlags(q.opts)?" flags":"")), ci=q.opts.indexOf(q.c);
   const counts=q.opts.map((_,i)=>[...H.players.values()].filter(p=>p.answers[H.i]&&p.answers[H.i].c===i).length);
   const max=Math.max(1,...counts);
   q.opts.forEach((o,i)=>{
-    const t=el("div","ans a"+i); t.append(el("span","sh",SHAPES[i]), el("span",null,o));
+    const t=el("div","ans a"+i); tileFace(t,q.opts,i);
     if(reveal){ t.append(el("span","cnt num",String(counts[i]))); const f=el("span","fill"); f.style.width=(counts[i]/max*100)+"%"; t.append(f); t.classList.add(i===ci?"right":"dim"); }
     grid.append(t);
   });
@@ -920,7 +963,7 @@ function renderHost(){
     if(!music && !muted) startMusic();
     const card=el("div","code-card");
     const url=location.href.split("#")[0];
-    card.append(el("div","label","Join at"), el("div","url",url), el("div","label","with game code"), el("div","code num",H.code));
+    card.append(el("div","label",VERSION+" · Join at"), el("div","url",url), el("div","label","with game code"), el("div","code num",H.code));
     st.append(card);
     const ps=[...H.players.values()];
     st.append(el("div","lobby-count num",String(ps.filter(p=>p.online).length)), el("p","muted",ps.length===1?"team waiting":"teams waiting"));
@@ -952,7 +995,7 @@ function renderHost(){
   }
   if(H.phase==="reveal"){
     st.append(el("p","q",q.q), tiles(q,true));
-    const why=el("p","why"); why.append(el("b",null,q.c+". "), q.why); st.append(why);
+    const why=el("p","why"+(isFlags(q.opts)?" "+FLAG_INFO[q.c][0]:"")); why.append(el("b",null,q.c+". "), q.why); st.append(why);
     const row=el("div","row"); const b=btn("Show scoreboard","btn",()=>{ H.phase="board"; renderHost(); }); row.append(b); st.append(row); b.focus();
     return;
   }
@@ -981,6 +1024,7 @@ function renderHost(){
     st.append(pod);
     const rest=el("div"); rest.id="podRest"; rest.hidden=true;
     if(list.length>3){ const ol=el("ol","board"); list.slice(3,10).forEach((p,i)=>{ const li=el("li"); li.append(el("span","rk num",String(i+4)), nameTag(p), el("span"), el("span","num",fmt(p.score))); ol.append(li); }); rest.append(ol); }
+    const db=SETS[H.set].debrief; if(db){ const w=el("div","why"); w.append(el("b",null,"Talk about it")); const ul=el("ul"); db.forEach(x=>ul.append(el("li",null,x))); w.append(ul); rest.append(w); }
     st.append(rest);
     const skip=btn("Skip to results","linkbtn",finishReveal); skip.id="podSkip"; skip.style.alignSelf="center"; st.append(skip);
     const row=el("div","row"); row.id="podCtl"; row.hidden=true;
@@ -1014,7 +1058,7 @@ function playerCode(err){
   const e=el("div","err",err||""); e.setAttribute("role","alert");
   const go=btn("Enter","btn",()=>{ const c=inp.value.replace(/\D/g,""); if(c.length!==6){ e.textContent="The code is 6 digits."; inp.focus(); return; } P.code=c; go.disabled=true; go.textContent="Connecting…"; P.phase="connecting"; connect(); });
   inp.addEventListener("keydown",ev=>{ if(ev.key==="Enter") go.click(); });
-  box.append(inp,e,go, btn("I'm the teacher: host a game","linkbtn",hostSetup));
+  box.append(inp,e,go, btn("I'm the teacher: host a game","linkbtn",hostSetup), el("p","muted",VERSION));
   app.append(box); inp.focus();
 }
 function playerPick(taken, note){
@@ -1095,10 +1139,10 @@ function playerQuestion(d){
   box.append(header(), el("div","label",`Question ${Number(d.i)+1} of ${Number(d.n)}`), el("p","pq",String(d.q||"")));
   const v=visFor({v:d.v}); if(v) box.append(v);
   const bar=el("div"); bar.style.cssText="height:10px;background:var(--panel);border-radius:99px;overflow:hidden"; const fill=el("div"); fill.style.cssText="height:100%;background:var(--lime);transform-origin:left"; bar.append(fill); box.append(bar);
-  const grid=el("div","answers");
+  const grid=el("div","answers"+(isFlags(d.opts)?" flags":""));
   d.opts.slice(0,4).forEach((o,i)=>{
-    const b=btn(null,"ans a"+i,()=>{ grid.querySelectorAll("button").forEach(x=>x.disabled=true); try{ P.conn.send({t:"ans",i:d.i,c:i}); }catch{} sfx.lock(); playerLocked(SHAPES[i]); });
-    b.append(el("span","sh",SHAPES[i]), el("span",null,String(o))); grid.append(b);
+    const b=btn(null,"ans a"+i,()=>{ grid.querySelectorAll("button").forEach(x=>x.disabled=true); try{ P.conn.send({t:"ans",i:d.i,c:i}); }catch{} sfx.lock(); playerLocked(isFlags(d.opts)?d.opts[i]:SHAPES[i]); });
+    tileFace(b,d.opts.map(String),i); grid.append(b);
   });
   box.append(grid); app.append(box);
   const secs=Number(d.secs)||20, start=performance.now()-(secs-(Number(d.left)||secs))*1000;
@@ -1118,6 +1162,7 @@ function playerResult(d){
   box.append(header());
   if(d.ok){ box.append(el("div","verdict ok pop","Correct"), el("div","pts num","+"+fmt(d.pts))); sfx.right(); if(d.streak>=2) box.append(el("p","rank","Answer streak: "+d.streak)); }
   else { box.append(el("div","verdict no pop", d.answered?"Incorrect":"Time's up")); box.append(el("p","rank","Answer: "+String(d.correct||""))); sfx.wrong(); }
+  if(d.why) box.append(el("p","why",String(d.why)));
   box.append(el("p","rank",`You're in ${ordinal(Number(d.rank)||0)} place`));
   if(d.behind) box.append(el("p","muted",`${fmt(d.gap)} points behind ${clean(d.behind)}`));
   app.append(box);
